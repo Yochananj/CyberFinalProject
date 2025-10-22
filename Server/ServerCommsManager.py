@@ -1,52 +1,65 @@
+import logging
 import socket
 import os
+from Dependencies.Constants import *
+from concurrent.futures import ThreadPoolExecutor
+
+from Server.Services.FileService import FileService
+from Server.Services.UserService import UserService
 
 
-class server_class:
-    try:
-        def __init__(self):
-            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+class ServerClass:
+    def __init__(self):
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.is_server_running = True
 
-            self.host_addr = ("127.0.0.1", 8080)
-            self.server.bind(self.host_addr)
-            self.server_listen()
+        self.file_service = FileService()
+        self.user_service = UserService()
 
-        def server_listen(self):
-            self.server.listen(100)
-            print("Server Listening On", self.host_addr)
-            self.connect_to_client()
+        self.host_addr = host_addr
+        self.server.bind(self.host_addr)
+
+        self.pool = ThreadPoolExecutor(2*os.cpu_count())
+
+        self.server_listen()
 
 
-        def connect_to_client(self):
+    def server_listen(self):
+        self.server.listen(100)
+        logging.info("Server Listening On", self.host_addr)
+        while self.is_server_running:
             client, client_addr = self.server.accept()
-            print("Connected to", client_addr)
-            client.send(b"Hello, client!")
-
-            data = client.recv(1024).decode()
-            self.parse_message(client, data)
-
-        def parse_message(self, client, message):
-            data = message.split("|||")
-
-            if data[0] == "GET":
-                self.send_file(client, data[1])
+            self.pool.submit(self.accept_client_connection, client, client_addr)
+        logging.info("Server Closed.")
 
 
-        def send_file(self, client, path):
-            file_size = os.path.getsize(path)
-            client.send(str(file_size).encode())
-            with open(path, "rb") as file:
-                contents = file.read(-1)
-                client.sendall(contents)
-                client.send("||| END |||".encode())
+    def accept_client_connection(self, client, client_addr):
+        logging.info("Connected to", client_addr)
+        client.send(b"Hello, client!")
 
-        def server_close(self):
-            self.server.close()
+        data = client.recv(buffer_size).decode()
+        self.parse_message(client, data)
 
-    finally:
-        server_close()
+    def parse_message(self, client, message):
+        data = message.split(seperator)
+        verb = data[0]
+
+        match verb:
+            case "GET":
+                print("verb = GET")
+                self.file_service.send_file(client, data[1])
+            case "PUT":
+                print("verb = PUT")
+                self.user_service.create_user(data[1], data[2])
+            case _:
+                print("Invalid Verb")
+
+        client.close()
 
 
+    def server_close(self):
+        self.server.close()
 
 
-a = server_class
+if __name__ == "__main__":
+    a = ServerClass()

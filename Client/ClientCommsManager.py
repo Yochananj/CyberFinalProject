@@ -1,44 +1,56 @@
 import math
 import socket
+import logging
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-host_addr = ('127.0.0.1', 8080)
-client.connect(host_addr)
-print('Connected to', host_addr)
-
-data = client.recv(1024).decode()
-print(data)
+from Client.Services.FileService import FileService
+from Dependencies.Constants import *
 
 
-client.send('GET|||/Users/yocha/Python Stuff/www/R8.jpg'.encode())
+class ClientClass:
+    def __init__(self):
+        self.sock = None
+        self.file_service = FileService()
+        pass
 
-file_size = client.recv(1024).decode()
-print(file_size, "bytes")
+    def connect_to_server(self, host_address=host_addr):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect(host_address)
+        logging.info('Connected to', host_addr)
 
-finished = False
-index = 0
-file_contents = b""
+        connection_confirmation = self.sock.recv(buffer_size).decode()
+        logging.info(connection_confirmation)
 
-while not finished:
-    data = client.recv(1024)
+    def send_message(self, verb, data, data2=None):
+        match verb:
+            case "GET":
+                logging.debug("Sending: GET")
+                self.sock.send(f"{verb}{seperator}{data}".encode())
 
-    index += 1
-    print("received data", index, "/", math.ceil(int(file_size)/1024))
+                self.file_service.receive_file(self, "/Users/yocha/Downloads/")
 
-    if data.endswith(b"||| END |||"):
-        finished = True
-        file_contents += data[:-11]
-    else:
-        file_contents += data
+            case "PUT":
+                logging.debug("Sending: PUT")
+                self.sock.send(f"{verb}{seperator}{data}{seperator}{data2}".encode())
+            case _:
+                logging.debug("Invalid Verb")
 
-print("finished receiving data")
 
-path_for_new_file = '/Users/yocha/Downloads/'
-with open(f"{path_for_new_file}R8.jpg", 'wb') as file:
-    file.write(file_contents)
 
-print("finished writing data")
 
-client.close()
+if __name__ == "__main__":
+    client = ClientClass()
 
+    client.connect_to_server(host_addr)
+
+    client.send_message("PUT", "USERNAME", "PASSWORD_HASH")
+
+    client.sock.close()
+    client.connect_to_server(host_addr)
+
+    client.send_message("GET", "/Users/yocha/Python Stuff/www/R8.jpg")
+
+
+
+
+
+    client.sock.close()
