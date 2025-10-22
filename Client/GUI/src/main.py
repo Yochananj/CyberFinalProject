@@ -1,31 +1,45 @@
+import logging
 import flet as ft
-from flet import TextField, Row, Column, Checkbox, ElevatedButton, Text, Button
-from flet_core import MainAxisAlignment
-from flet_core.control_event import ControlEvent
-
+from Client.GUI.src.Controllers.LoginController import LoginController
 from Client.GUI.src.Pages.LoginPage import LoginPage
-
+from Client.GUI.src.Controllers.SignUpController import SignUpController
+from Client.GUI.src.Pages.SignUpPage import SignUpPage
 
 class GUI:
     def __init__(self, page: ft.Page):
+        logging.Filter("debug")
+        self.view = None
+        self.controller = None
+
         self.page = page
-        self.login_page = LoginPage()
         self.page.window.width = 600
         self.page.window.height = 600
         self.page.vertical_alignment = ft.MainAxisAlignment.CENTER
-        self.page.themeMode = "light"
+        self.page.themeMode = ft.ThemeMode.LIGHT
+
+        self.navigator("Log In")
+
+    def navigator(self, to_page: str, username: str = None, password: str = None):
+        self.page.clean()
+
+        match to_page:
+            case "Log In":
+                self.view = LoginPage(start_username_with=username, start_password_with=password)
+                self.page.add(self.view.build())
+                self.controller = LoginController(page=self.page, view=self.view, navigator=self.navigator)
+            case "Sign Up":
+                self.view = SignUpPage(start_username_with=username, start_password_with=password)
+                self.page.add(self.view.build())
+                self.controller = SignUpController(page=self.page ,view=self.view, navigator=self.navigator)
+            case _:
+                logging.error("Invalid page.")
+
+        self.page.update()
 
 
 
 
 
-
-
-def update_page(self):
-    self.page.update()
-
-def switch_page(self, page):
-    self.page = page
 
 
 if __name__ == "__main__":
