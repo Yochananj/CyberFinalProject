@@ -4,7 +4,7 @@ import os
 from Dependencies.Constants import *
 from concurrent.futures import ThreadPoolExecutor
 
-from Server.Services.FileService import FileService
+from Server.Services.ServerFileService import FileService
 from Server.Services.UserService import UserService
 
 
@@ -26,7 +26,7 @@ class ServerClass:
 
     def server_listen(self):
         self.server.listen(100)
-        logging.info("Server Listening On", self.host_addr)
+        logging.info(str("Server Listening On", self.host_addr))
         while self.is_server_running:
             client, client_addr = self.server.accept()
             self.pool.submit(self.accept_client_connection, client, client_addr)
@@ -34,7 +34,7 @@ class ServerClass:
 
 
     def accept_client_connection(self, client, client_addr):
-        logging.info("Connected to", client_addr)
+        logging.info(str("Connected to", client_addr))
         client.send(b"Hello, client!")
 
         data = client.recv(buffer_size).decode()
@@ -62,4 +62,5 @@ class ServerClass:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     a = ServerClass()

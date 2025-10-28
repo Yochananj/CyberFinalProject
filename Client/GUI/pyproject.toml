@@ -1,5 +1,5 @@
 [project]
-name = "CyberFinalProject"
+name = "CryptDrive"
 version = "0.1.0"
 description = ""
 readme = "README.md"
@@ -14,11 +14,11 @@ dependencies = [
 [tool.flet]
 # org name in reverse domain name notation, e.g. "com.mycompany".
 # Combined with project.name to build bundle ID for iOS and Android apps
-org = "com.mycompany"
+org = "com.CryptDrive"
 
 # project display name that is used as an app title on Android and iOS home screens,
 # shown in window titles and about app dialogs on desktop.
-product = "CyberFinalProject"
+product = "CryptDrive"
 
 # company name to display in about app dialogs
 company = "Amichai Cyber Project"

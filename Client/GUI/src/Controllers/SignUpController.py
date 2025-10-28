@@ -1,6 +1,7 @@
 import logging
-
 import flet as ft
+
+from Client.GUI.src.Views.ViewsAndRoutesList import ViewsAndRoutesList
 
 
 class SignUpController:
@@ -14,7 +15,7 @@ class SignUpController:
         self.view.username.on_change = lambda e: self.upon_text_field_change(page)
         self.view.password.on_change = lambda e: self.upon_text_field_change(page)
         self.view.password_confirmation.on_change = lambda e: self.upon_text_field_change(page)
-        self.view.log_in_button.on_click = lambda e: self._upon_log_in_click(page)
+        self.view.log_in_button.on_click = lambda e: self.upon_log_in_click(page)
         self.view.switch_to_log_in_button.on_click = lambda e: self.upon_switch_to_log_in_click(page)
 
     def upon_text_field_change(self, page: ft.Page):
@@ -28,8 +29,8 @@ class SignUpController:
         current_entry_username, current_entry_password = "", ""
         if self.view.username.value: current_entry_username = self.view.username.value
         if self.view.password.value: current_entry_password = self.view.password.value
-        self.navigator("Log In", username=current_entry_username, password=current_entry_password)
+        self.navigator(ViewsAndRoutesList.LOG_IN, username=current_entry_username, password=current_entry_password)
         page.update()
 
-    def _upon_log_in_click(self, page: ft.Page):
+    def upon_log_in_click(self, page: ft.Page):
         print("Log in clicked")

@@ -1,8 +1,7 @@
-import math
 import socket
 import logging
 
-from Client.Services.FileService import FileService
+from Client.Services.ClientFileService import FileService
 from Dependencies.Constants import *
 
 
@@ -16,11 +15,12 @@ class ClientClass:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(host_address)
         logging.info('Connected to', host_addr)
-
         connection_confirmation = self.sock.recv(buffer_size).decode()
         logging.info(connection_confirmation)
 
-    def send_message(self, verb, data, data2=None):
+    def send_message(self, verb, data, data2=None, host_address = host_addr):
+        self.connect_to_server(host_address)
+
         match verb:
             case "GET":
                 logging.debug("Sending: GET")
@@ -34,10 +34,11 @@ class ClientClass:
             case _:
                 logging.debug("Invalid Verb")
 
-
+        self.sock.close()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     client = ClientClass()
 
     client.connect_to_server(host_addr)
@@ -48,8 +49,6 @@ if __name__ == "__main__":
     client.connect_to_server(host_addr)
 
     client.send_message("GET", "/Users/yocha/Python Stuff/www/R8.jpg")
-
-
 
 
 

@@ -1,7 +1,8 @@
 import logging
 import flet as ft
-from Client.GUI.src.Pages.LoginPage import LoginPage
-from Client.GUI.src.Pages.SignUpPage import SignUpPage
+from Client.GUI.src.Views.LoginView import LoginPage
+from Client.GUI.src.Views.SignUpView import SignUpPage
+from Client.GUI.src.Views.ViewsAndRoutesList import ViewsAndRoutesList
 
 
 class LoginController:
@@ -28,8 +29,8 @@ class LoginController:
         current_entry_username, current_entry_password = "", ""
         if self.view.username.value: current_entry_username = self.view.username.value
         if self.view.password.value: current_entry_password = self.view.password.value
-        self.navigator("Sign Up", username=current_entry_username, password=current_entry_password)
+        self.navigator(ViewsAndRoutesList.SIGN_UP, username=current_entry_username, password=current_entry_password)
         page.update()
 
     def _upon_log_in_click(self, page: ft.Page):
-        logging.debug("Log in clicked")
+        print("Log in clicked")
