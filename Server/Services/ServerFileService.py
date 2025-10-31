@@ -1,7 +1,4 @@
 import uuid
-
-from Dependencies.Constants import *
-import os
 import logging
 from Server.DAOs import FilesDatabaseDAO
 from Server.DAOs.FilesDiskDAO import FilesDiskDAO
@@ -51,18 +48,10 @@ class FileService:
     def get_file_size(self, file_owner, user_file_path, file_name):
         return self.files_database_dao.get_file_size(file_owner, user_file_path, file_name)
 
-
     def file_uuid_generator(self):
         return uuid.uuid4().hex
 
 
-    def send_file(self, client, path):                      # to be deprecated
-        file_size = os.path.getsize(path)
-        client.send(str(file_size).encode())
-        with open(path, "rb") as file:
-            contents = file.read(-1)
-            client.sendall(contents)
-            client.send(end_flag)
 
 
 

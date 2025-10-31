@@ -1,12 +1,11 @@
 import logging
 import flet as ft
-from Client.GUI.src.Views.LoginView import LoginPage
-from Client.GUI.src.Views.SignUpView import SignUpPage
+from Client.GUI.src.Views.LoginView import LoginView
 from Client.GUI.src.Views.ViewsAndRoutesList import ViewsAndRoutesList
 
 
 class LoginController:
-    def __init__(self, page: ft.Page, view, navigator):
+    def __init__(self, page: ft.Page, view: LoginView, navigator):
         self.view = view
         self.navigator = navigator
         self.upon_text_field_change(page)
@@ -33,4 +32,5 @@ class LoginController:
         page.update()
 
     def _upon_log_in_click(self, page: ft.Page):
-        print("Log in clicked")
+        print("Log In clicked")
+        self.navigator(ViewsAndRoutesList.HOME)

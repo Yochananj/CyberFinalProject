@@ -3,8 +3,8 @@ import socket
 import os
 from Dependencies.Constants import *
 from concurrent.futures import ThreadPoolExecutor
-
 from Server.Services.ServerFileService import FileService
+from Server.Services.TokensService import TokensService
 from Server.Services.UserService import UserService
 
 
@@ -15,6 +15,7 @@ class ServerClass:
 
         self.file_service = FileService()
         self.user_service = UserService()
+        self.token_service = TokensService()
 
         self.host_addr = host_addr
         self.server.bind(self.host_addr)
@@ -35,30 +36,57 @@ class ServerClass:
 
     def accept_client_connection(self, client, client_addr):
         logging.info(str("Connected to", client_addr))
-        client.send(b"Hello, client!")
 
         data = client.recv(buffer_size).decode()
         self.parse_message(client, data)
 
     def parse_message(self, client, message):
-        data = message.split(seperator)
-        verb = data[0]
+        verb = message.split(seperator)[0]
+        client_token = message.split(seperator)[1]
+        data = message.split(seperator)[2, 0]
+
+        is_token_valid = self.token_service.is_token_valid(client_token)
 
         match verb:
-            case "GET":
-                print("verb = GET")
-                self.file_service.send_file(client, data[1])
-            case "PUT":
-                print("verb = PUT")
+            case "SIGN_UP":
+                print("verb = SING_UP")
                 self.user_service.create_user(data[1], data[2])
+
+            case "LOG_IN":
+                print("verb = LOG_IN")
+                pass
+
+            case "DOWNLOAD_FILE":
+                if is_token_valid:
+                    print("verb = DOWNLOAD_FILE")
+                    self.send_file(client, data)
+                else:
+                    response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+                    self.respond_to_client(client, response)
             case _:
                 print("Invalid Verb")
 
+
+    def respond_to_client(self, client, message):
         client.close()
+
+    def send_file(self, client, path):                      # to be deprecated
+        file_size = self.file_service.get_file_size(path)
+        client.send(str(file_size).encode())
+        contents = self.file_service.get_file_contents(path)
+        client.sendall(contents)
+        client.send(end_flag)
+
+    def write_message(self, success, token, error_code=None):
+        message = success + seperator + token
+        if error_code:
+            message += seperator + error_code
+        return message
 
 
     def server_close(self):
         self.server.close()
+        self.is_server_running = False
 
 
 if __name__ == "__main__":

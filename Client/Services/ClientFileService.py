@@ -16,27 +16,8 @@ class FileService:
             file.write(file_contents)
         logging.debug(f"File {file_name} written to {path_to_save_to} on the disk.")
 
-    def receive_file(self, client, path_to_save_to, file_name):   # Should be in the Comms Manager
-        file_size = client.sock.recv(buffer_size).decode()
-        logging.info("File size is:", file_size, "bytes")
 
-        finished = False
-        index = 0
-        file_contents = b""
-
-        while not finished:
-            connection_confirmation = client.sock.recv(buffer_size)
-
-            index += 1
-            if index % 10 == 0:
-                logging.debug("received data", index, "/", math.ceil(int(file_size) / buffer_size))
-
-            if connection_confirmation.endswith(end_flag):
-                finished = True
-                file_contents += connection_confirmation[:-len(end_flag)]
-            else:
-                file_contents += connection_confirmation
-
-        logging.info("finished receiving data")
-
-        self.write_file_to_disk(file_contents, path_to_save_to, file_name)
+    def read_file_from_disk(self, full_file_path):
+        with open(full_file_path, "rb") as file:
+            file_contents = file.read(-1)
+        return file_contents

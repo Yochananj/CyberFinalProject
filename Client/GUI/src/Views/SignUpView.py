@@ -1,9 +1,21 @@
+import os
+
 import flet as ft
 from flet import TextField, Row, Column, Checkbox, ElevatedButton, Text, Button
 
 
-class SignUpPage:
+class SignUpView:
     def __init__(self, username_start_value: str = "", password_start_value: str = ""):
+        self.logo = Row(
+            controls=[
+                Column(width=30, controls=[ft.Text("")]),
+                ft.Image(
+                    src=os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/icon.png"),
+                    width=200,
+                    height=200,
+                    fit=ft.ImageFit.FIT_WIDTH
+                )]
+        )
         self.username = TextField(value=username_start_value, label="Username", text_align=ft.TextAlign.LEFT, width=300, autofocus=True)
         self.password = TextField(value=password_start_value, label="Password", text_align=ft.TextAlign.LEFT, width=300, password=True)
         self.password_confirmation = TextField(label="Confirm Password", text_align=ft.TextAlign.LEFT, width=300, password=True)
@@ -16,6 +28,7 @@ class SignUpPage:
             controls=[Row(
                 controls=[
                     Column([
+                        self.logo,
                         self.username,
                         self.password,
                         self.password_confirmation,

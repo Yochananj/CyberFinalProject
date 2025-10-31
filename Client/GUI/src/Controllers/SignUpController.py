@@ -33,4 +33,5 @@ class SignUpController:
         page.update()
 
     def upon_log_in_click(self, page: ft.Page):
-        print("Log in clicked")
+        print("Sign Up clicked")
+        self.navigator(ViewsAndRoutesList.HOME)
