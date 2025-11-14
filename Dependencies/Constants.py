@@ -1,13 +1,29 @@
 import os
+from random import randint
+
 import platformdirs
+import flet as ft
 
 # Constants:
 
 # Project Constants
 app_name = "CryptDrive"
 app_author = "YochananJulian"
-crypt_drive_blue = "#3043FB"
 
+# GUI Constants
+crypt_drive_blue_semilight = "#CDD2FE"
+crypt_drive_blue_light = "#E6E8FE"
+crypt_drive_blue_medium = "#9BA5FB"
+crypt_drive_purple = "#4A5086"
+crypt_drive_blue = "#3043FB"
+crypt_drive_theme = ft.Theme(color_scheme_seed=crypt_drive_blue, font_family="Aeonik")
+
+crypt_drive_fonts = {
+    "Aeonik": f"Aeonik/AeonikExtendedLatinHebrew-Regular.otf",
+    "Aeonik Bold": f"Aeonik/AeonikExtendedLatinHebrew-Bold.otf",
+    "Aeonik Black": f"Aeonik/AeonikExtendedLatinHebrew-Black.otf",
+    "Aeonik Thin": f"Aeonik/AeonikExtendedLatinHebrew-Thin.otf"
+}
 
 # Flags
 seperator = "|||"
@@ -16,14 +32,14 @@ end_flag = b"||| END |||"
 
 # Server Constants
 server_address = "127.0.0.1"
-server_port = 8080
+server_port = 8081
 host_addr = (server_address, server_port)
 server_storage_path = platformdirs.user_data_path(app_name)
 
 
 # Server Keys
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # directory of this Constants.py file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # directory in which this Constants.py file sits
 PUBLIC_KEY_PATH = os.path.join(BASE_DIR, "public.pem")
 PRIVATE_KEY_PATH = os.path.join(BASE_DIR, "private.pem")
 

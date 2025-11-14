@@ -1,15 +1,16 @@
-import uuid
 import logging
+import uuid
+
 from Server.DAOs import FilesDatabaseDAO
 from Server.DAOs.FilesDiskDAO import FilesDiskDAO
 from Server.Services.UsersService import UsersService
 
 
 class FileService:
-    def __init__(self):
+    def __init__(self, users_service: UsersService):
         self.files_database_dao = FilesDatabaseDAO.FilesDatabaseDAO()
         self.files_disk_dao = FilesDiskDAO()
-        self.users_service = UsersService()
+        self.users_service = users_service
 
     def create_file(self, file_owner, user_file_path, user_file_name, file_contents):
         file_owner_id = self.users_service.get_user_id(file_owner)
@@ -48,12 +49,42 @@ class FileService:
     def get_file_size(self, file_owner, user_file_path, file_name):
         return self.files_database_dao.get_file_size(file_owner, user_file_path, file_name)
 
+    def get_dirs_list_for_path(self, file_owner, path):
+        logging.debug(f"Getting dirs list for path {path} for user {file_owner}.")
+        file_owner_id = self.users_service.get_user_id(file_owner)
+
+        dirs_in_path = self.files_database_dao.get_all_dirs_in_path(file_owner_id, path)
+
+        directories_list = []
+        for directory in dirs_in_path:
+            temp_dir = Directory(directory.user_file_path, len(self.files_database_dao.get_all_files_in_path(file_owner_id, directory.user_file_path)))
+            if temp_dir.__dict__ not in [a.__dict__ for a in directories_list]:
+                directories_list.append(temp_dir)
+        logging.debug(f"Filtered dirs list: {directories_list}")
+        return directories_list
+
+    def get_files_list_in_path(self, file_owner, path):
+        logging.debug(f"Getting files list for path {path} for user {file_owner}.")
+        file_owner_id = self.users_service.get_user_id(file_owner)
+        files = self.files_database_dao.get_all_files_in_path(file_owner_id, path)
+        files_list = []
+        for file in files:
+            files_list.append(File(file.user_file_name, file.file_size))
+        logging.debug(f"File tuples list: {[file.__dict__ for file in files_list]}")
+        return files_list
+
     def file_uuid_generator(self):
         return uuid.uuid4().hex
 
+class Directory:
+    def __init__(self, path, item_count):
+        self.path = path
+        self.item_count = item_count
 
-
-
+class File:
+    def __init__(self, name, size):
+        self.name = name
+        self.size = size
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)

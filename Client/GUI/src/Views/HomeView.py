@@ -1,11 +1,12 @@
 import os
+
 import flet as ft
 
-from Dependencies.Constants import crypt_drive_blue
+from Dependencies.Constants import crypt_drive_blue, crypt_drive_blue_light, crypt_drive_purple
 
 
 class HomeView:
-    def __init__(self, window_height):
+    def __init__(self, window_height, window_width):
         self.nav_rail = ft.NavigationRail(
             label_type=ft.NavigationRailLabelType.SELECTED,
             min_width=100,
@@ -14,50 +15,65 @@ class HomeView:
             selected_label_text_style=ft.TextStyle(font_family="Aeonik Bold", size=16, color=crypt_drive_blue),
             selected_index=0,
 
-            leading = ft.Image(
-                src=os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/icon.png"),
-                width=100,
-                height=100,
-                fit=ft.ImageFit.FIT_WIDTH),
+            leading = ft.Container(
+                content=ft.Image(
+                    src=os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/icon.png"),
+                    width=100,
+                    height=100,
+                    fit=ft.ImageFit.FIT_WIDTH,
+                ),
+                url="https://github.com/Yochananj/CyberFinalProject",
+            ),
 
             destinations=[
                 ft.NavigationRailDestination(
                     label="Files",
-                    selected_icon=ft.Icons.FOLDER,
-                    icon=ft.Icons.FOLDER_OUTLINED
+                    selected_icon=ft.Icon(ft.Icons.FOLDER, color=crypt_drive_purple),
+                    icon=ft.Icon(ft.Icons.FOLDER_OUTLINED, color=crypt_drive_purple)
                 ),
                 ft.NavigationRailDestination(
                     label="Account",
-                    selected_icon=ft.Icons.ACCOUNT_CIRCLE,
-                    icon=ft.Icons.ACCOUNT_CIRCLE_OUTLINED
+                    selected_icon=ft.Icon(ft.Icons.ACCOUNT_CIRCLE, color=crypt_drive_purple),
+                    icon=ft.Icon(ft.Icons.ACCOUNT_CIRCLE_OUTLINED, color=crypt_drive_purple)
                 ),
                 ft.NavigationRailDestination(
                     label="Settings",
-                    selected_icon=ft.Icons.SETTINGS,
-                    icon=ft.Icons.SETTINGS_OUTLINED
+                    selected_icon=ft.Icon(ft.Icons.SETTINGS, color=crypt_drive_purple),
+                    icon=ft.Icon(ft.Icons.SETTINGS_OUTLINED, color=crypt_drive_purple)
                 )
-            ])
+            ]
+        )
 
         self.body = ft.Container(
-            content=ft.Text("Body!")
+            height=window_height,
+            width=window_width - 100,
+            content=[ft.Text("Body!")],
+            expand=True,
+            bgcolor=crypt_drive_blue_light,
+            border_radius=10,
+            padding=(ft.padding.only(left=30, right=30, top=0, bottom=0)),
+
         )
 
 
     def build(self):
         return ft.View(route="/home",
-           controls=[(ft.Row(
-                controls=[
-                    self.nav_rail,
-                    ft.VerticalDivider(width=1, color=crypt_drive_blue),
-                    self.body
-                ],
-                expand=True
-            ))])
+                       controls=[
+                           ft.Row(
+                           controls=[
+                               self.nav_rail,
+                               # ft.VerticalDivider(width=1, color=crypt_drive_blue),
+                               self.body
+                           ],
+                           expand=True
+                            )
+                       ],
+                )
 
 
 def test(page: ft.Page):
     page.views.append(
-        HomeView(page).build()
+        HomeView(page.window.height, page.window.width).build()
     )
     page.update()
 

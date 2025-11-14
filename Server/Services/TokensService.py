@@ -1,6 +1,8 @@
 import jwt
 import time
 
+from jwt import DecodeError
+
 from Dependencies.Constants import private_key, public_key
 
 
@@ -13,10 +15,13 @@ class TokensService:
         return jwt.encode({"username": username, "exp": int(time.time() + 10*60)}, self.private_key, algorithm="RS256") # 10 minutes
 
     def is_token_valid(self, token_to_validate):
-        decoded_token = self.decode_token(token_to_validate)
-        if decoded_token["exp"] > int(time.time()):
-            return True
-        else:
+        try:
+            decoded_token = self.decode_token(token_to_validate)
+            if decoded_token["exp"] > int(time.time()):
+                return True
+            else:
+                return False
+        except DecodeError:
             return False
 
     def does_token_need_refreshing(self, token_to_check):
@@ -32,6 +37,6 @@ class TokensService:
 
 if __name__ == "__main__":
     ts = TokensService()
-    token = ts.create_token(1)
+    token = ts.create_token("qwe")
     print(token)
-    print(ts.decode_token(token))
+    print(ts.decode_token(token)["username"])

@@ -3,7 +3,7 @@ import enum
 class Verbs(enum.Enum):
     SIGN_UP = "SIGN_UP"
     LOG_IN = "LOG_IN"
-    UPLOAD_NEW_FILE = "CREATE_FILE"
+    CREATE_FILE = "CREATE_FILE"
     DOWNLOAD_FILE = "DOWNLOAD_FILE"
     DELETE_FILE = "DELETE_FILE"
     GET_FILES_LIST = "GET_FILES_LIST"

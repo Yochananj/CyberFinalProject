@@ -1,11 +1,13 @@
+import json
 import logging
 import socket
-import os
-from Dependencies.Constants import *
+import time
 from concurrent.futures import ThreadPoolExecutor
+
+from Dependencies.Constants import *
 from Server.Services.ServerFileService import FileService
 from Server.Services.TokensService import TokensService
-from Server.Services.UserService import UserService
+from Server.Services.UsersService import UsersService
 
 
 class ServerClass:
@@ -13,8 +15,8 @@ class ServerClass:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.is_server_running = True
 
-        self.file_service = FileService()
-        self.user_service = UserService()
+        self.user_service = UsersService()
+        self.file_service = FileService(self.user_service)
         self.token_service = TokensService()
 
         self.host_addr = host_addr
@@ -27,68 +29,129 @@ class ServerClass:
 
     def server_listen(self):
         self.server.listen(100)
-        logging.info(str("Server Listening On", self.host_addr))
+        logging.info(f"Server Listening On: {self.host_addr}")
         while self.is_server_running:
             client, client_addr = self.server.accept()
-            self.pool.submit(self.accept_client_connection, client, client_addr)
+            logging.info(f"Client Connected: {client_addr}")
+            self.pool.submit(self.begin_client_communication, client, client_addr)
         logging.info("Server Closed.")
 
 
-    def accept_client_connection(self, client, client_addr):
-        logging.info(str("Connected to", client_addr))
+    def begin_client_communication(self, client, client_addr):
+        logging.info(f"Receiving Message From: {client_addr}")
 
         data = client.recv(buffer_size).decode()
+        logging.debug(f"Received: {data}")
         self.parse_message(client, data)
 
     def parse_message(self, client, message):
-        verb = message.split(seperator)[0]
-        client_token = message.split(seperator)[1]
-        data = message.split(seperator)[2, 0]
+        message_parts = message.split(seperator)
+        verb = message_parts[0]
+        client_token = message_parts[1]
+        data = message_parts[2:len(message_parts)]
 
+
+        logging.debug(f"Verb: {verb}, Token: {client_token}, Data: {data[0:len(data)]}")
         is_token_valid = self.token_service.is_token_valid(client_token)
+
+        if is_token_valid and self.token_service.does_token_need_refreshing(client_token):
+            client_token = self.token_service.create_token(username=self.token_service.decode_token(client_token)["username"])
+
+        logging.info(f"Is token valid: {is_token_valid}.")
+
+        response = ""
+        response_data = []
 
         match verb:
             case "SIGN_UP":
-                print("verb = SING_UP")
-                self.user_service.create_user(data[1], data[2])
+                logging.debug("verb = SIGN_UP")
+                if self.user_service.create_user(data[0], data[1]):
+                    logging.debug(f"Created User: {data[0]}, with password hash: {data[0]}")
+                    response = self.write_message("SUCCESS", self.token_service.create_token(username=data[1]))
+                else:
+                    logging.debug(f"User {data[0]} already exists.")
+                    response = self.write_message("ERROR", client_token, "USER_EXISTS")
 
             case "LOG_IN":
-                print("verb = LOG_IN")
-                pass
+                logging.debug("verb = LOG_IN")
+                if self.user_service.login(data[0], data[1]):
+                    response = self.write_message("SUCCESS", self.token_service.create_token(username=data[0]))
+                else:
+                    response = self.write_message("ERROR", client_token, "INVALID_CREDENTIALS")
 
             case "DOWNLOAD_FILE":
+                logging.debug("verb = DOWNLOAD_FILE")
+                # if is_token_valid:
+                #     self.send_file(client, data) ################################
+                # else:
+                #     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+
+            case "GET_FILES_LIST":
+                logging.debug("verb = GET_FILES_LIST")
                 if is_token_valid:
-                    print("verb = DOWNLOAD_FILE")
-                    self.send_file(client, data)
+                    username = self.token_service.decode_token(client_token)["username"]
+                    response_data.append(json.dumps([directory.__dict__ for directory in self.file_service.get_dirs_list_for_path(username, data[0])]))
+                    response_data.append(json.dumps([file_obj.__dict__ for file_obj in self.file_service.get_files_list_in_path(username, data[0])]))
+                    logging.debug(f"Response data: \n Dirs: {response_data[0]} \n Files: {response_data[1]}")
+                    response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
-                    self.respond_to_client(client, response)
+
             case _:
-                print("Invalid Verb")
+                logging.debug("Invalid Verb")
 
+        logging.debug(f"Sending Response: {response}")
+        self.respond_to_client(client, response)
 
-    def respond_to_client(self, client, message):
-        client.close()
+        logging.debug(f"Response Data: {response_data}")
+        logging.debug(f"Response Data Length: {len(response_data)}")
 
-    def send_file(self, client, path):                      # to be deprecated
-        file_size = self.file_service.get_file_size(path)
-        client.send(str(file_size).encode())
-        contents = self.file_service.get_file_contents(path)
-        client.sendall(contents)
-        client.send(end_flag)
+        if len(response_data) > 0:
+            logging.debug("Sending Data")
+            self.send_data(client, response_data)
 
-    def write_message(self, success, token, error_code=None):
+    def write_message(self, success, token, status_code=None):
         message = success + seperator + token
-        if error_code:
-            message += seperator + error_code
+        if status_code:
+            message += seperator + status_code
         return message
 
+    def respond_to_client(self, client, message):
+        client.send(message.encode())
+        logging.debug("Sent Response")
 
-    def server_close(self):
+
+    def send_data(self, client, data: list):
+        logging.debug("Starting to send Data")
+        str_to_send = ""
+        for item in data:
+            str_to_send += str(item)
+            str_to_send += seperator
+            logging.debug(f"Current Data: {str_to_send}")
+        str_to_send = str_to_send.encode()
+        str_to_send += end_flag
+        logging.debug(f"Final Data: {str_to_send}")
+        time.sleep(0.5)
+        client.sendall(str_to_send)
+        logging.debug("Finished Sending Data")
+
+    def server_close(self): ############################################ shutdown hook
         self.server.close()
         self.is_server_running = False
+        logging.info("Server Closed.")
+
+    # to be deprecated
+    # def send_file(self, client, path):
+    #     file_size = self.file_service.get_file_size(path)
+    #     client.send(str(file_size).encode())
+    #     contents = self.file_service.get_file_contents(path)
+    #     client.sendall(contents)
+    #     client.send(seperator, end_flag)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     a = ServerClass()
+
+
+

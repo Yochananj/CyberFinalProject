@@ -30,7 +30,14 @@ class UsersDatabaseDAO:
         logging.debug(f"User {username} deleted from the Database.")
 
     def get_user_id(self, username):
-        return UsersDB.select().where(UsersDB.username == username).get().user_id
+        user_id = UsersDB.select().where(UsersDB.username == username).get().user_id
+        return user_id
+
+    def check_username_against_password_hash(self, username, password):
+        return UsersDB.select().where(UsersDB.username == username).get().password_hash == password
+
+    def does_user_exist(self, username):
+        return UsersDB.select().where(UsersDB.username == username).exists()
 
     def close_db(self):
         users_db.close()
