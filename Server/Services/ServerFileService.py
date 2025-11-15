@@ -24,8 +24,10 @@ class FileService:
             self.files_database_dao.create_file(file_owner_id, user_file_path, file_uuid, user_file_name, file_size)
 
             logging.debug(f"File {user_file_name} created.")
+            return True
         else:
             logging.error("File already exists.")
+            return False
 
     def delete_file(self, file_owner, user_file_path, user_file_name):
         file_owner_id = self.users_service.get_user_id(file_owner)
@@ -58,7 +60,7 @@ class FileService:
         directories_list = []
         for directory in dirs_in_path:
             temp_dir = Directory(directory.user_file_path, len(self.files_database_dao.get_all_files_in_path(file_owner_id, directory.user_file_path)))
-            if temp_dir.__dict__ not in [a.__dict__ for a in directories_list]:
+            if temp_dir.path not in [a.path for a in directories_list]:
                 directories_list.append(temp_dir)
         logging.debug(f"Filtered dirs list: {directories_list}")
         return directories_list
@@ -75,6 +77,13 @@ class FileService:
 
     def file_uuid_generator(self):
         return uuid.uuid4().hex
+
+    def can_create_file(self, file_owner, user_file_path, user_file_name):
+        file_owner_id = self.users_service.get_user_id(file_owner)
+        if self.files_database_dao.does_file_exist(file_owner_id, user_file_path, user_file_name):
+            return False
+        else:
+            return True
 
 class Directory:
     def __init__(self, path, item_count):

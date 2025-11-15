@@ -4,6 +4,7 @@ import logging
 import time
 
 from Client.Services.ClientFileService import FileService
+from Client.Services.PasswordHashingService import PasswordHashingService
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
 
@@ -39,6 +40,10 @@ class ClientClass:
                 logging.debug("Sending: GET_FILES_LIST")
                 message = self.write_message(verb, data)
 
+            case Verbs.CREATE_FILE:
+                logging.debug("Sending: CREATE_FILE")
+                message = self.write_message(verb, data[:-1])
+
             case _:
                 logging.debug("Invalid Verb")
 
@@ -46,9 +51,20 @@ class ClientClass:
         logging.debug(f"Sent Message: {message} \n waiting for response. \n")
 
         a,b =  self.receive_response(receiving_byte_data)
+
+        if b == "READY_FOR_DATA":
+            logging.debug("Sending data")
+            str_to_send = data[-1]
+            if type(data[-1]) != bytes:
+                str_to_send = str_to_send.encode()
+            str_to_send += end_flag
+            self.sock.sendall(str_to_send)
+            logging.debug("Data sent \n waiting for response.")
+            a,b = self.receive_response()
+
         return a,b
 
-    def receive_response(self, is_byte_data):
+    def receive_response(self, is_receiving_byte_data=False):
         time.sleep(0.5)
         status = self.sock.recv(buffer_size).decode()
 
@@ -71,15 +87,13 @@ class ClientClass:
 
         if len(status_parts) == 3 and status_parts[2] == "SENDING_DATA":
             logging.debug("Receiving Data")
-            to_return_data = self.receive_data(is_byte_data)
+            to_return_data = self.receive_data(is_receiving_byte_data)
             logging.debug(f"Received Data: {to_return_data}, now splitting.")
             to_return_data = to_return_data.split(seperator)
 
-        # self.sock.shutdown(socket.SHUT_RDWR)
-        # logging.debug("Connection Closed")
 
         if len(to_return_data) != 0: return status_parts[0], to_return_data
-
+        if len(status_parts) == 3: return status_parts[0], status_parts[2]
         return status_parts[0], None
 
     def connect_to_server(self, host_address=host_addr):
@@ -140,6 +154,11 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     client = ClientClass()
 
-    client.send_message(Verbs.LOG_IN, ["USERNAME", "PASSWORD_HASH"])
+    client.send_message(Verbs.LOG_IN, ["qwe", PasswordHashingService.hash("qweqweqwe")])
+
+    with open("/Users/yocha/Python Stuff/www/R8.jpg", "rb") as file:
+        file_contents = file.read(-1)
+
+    client.send_message(Verbs.CREATE_FILE, ["/", "r8", file_contents])
 
     client.sock.close()

@@ -2,6 +2,7 @@ import json
 import logging
 import socket
 import time
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 
 from Dependencies.Constants import *
@@ -30,11 +31,15 @@ class ServerClass:
     def server_listen(self):
         self.server.listen(100)
         logging.info(f"Server Listening On: {self.host_addr}")
-        while self.is_server_running:
-            client, client_addr = self.server.accept()
-            logging.info(f"Client Connected: {client_addr}")
-            self.pool.submit(self.begin_client_communication, client, client_addr)
-        logging.info("Server Closed.")
+        try:
+            while self.is_server_running:
+                client, client_addr = self.server.accept()
+                logging.info(f"Client Connected: {client_addr}")
+                self.pool.submit(self.begin_client_communication, client, client_addr)
+        except KeyboardInterrupt:
+            self.server_close()
+        finally:
+            logging.info("Server Closed.")
 
 
     def begin_client_communication(self, client, client_addr):
@@ -46,21 +51,26 @@ class ServerClass:
 
     def parse_message(self, client, message):
         message_parts = message.split(seperator)
+
         verb = message_parts[0]
         client_token = message_parts[1]
         data = message_parts[2:len(message_parts)]
 
-
         logging.debug(f"Verb: {verb}, Token: {client_token}, Data: {data[0:len(data)]}")
+
         is_token_valid = self.token_service.is_token_valid(client_token)
 
-        if is_token_valid and self.token_service.does_token_need_refreshing(client_token):
-            client_token = self.token_service.create_token(username=self.token_service.decode_token(client_token)["username"])
+        username = ""
+        if is_token_valid :
+            username = self.token_service.decode_token(client_token)["username"]
+            if self.token_service.does_token_need_refreshing(client_token):
+                client_token = self.token_service.create_token(username=self.token_service.decode_token(client_token)["username"])
 
         logging.info(f"Is token valid: {is_token_valid}.")
 
         response = ""
         response_data = []
+        needs_data = False
 
         match verb:
             case "SIGN_UP":
@@ -89,11 +99,21 @@ class ServerClass:
             case "GET_FILES_LIST":
                 logging.debug("verb = GET_FILES_LIST")
                 if is_token_valid:
-                    username = self.token_service.decode_token(client_token)["username"]
                     response_data.append(json.dumps([directory.__dict__ for directory in self.file_service.get_dirs_list_for_path(username, data[0])]))
                     response_data.append(json.dumps([file_obj.__dict__ for file_obj in self.file_service.get_files_list_in_path(username, data[0])]))
                     logging.debug(f"Response data: \n Dirs: {response_data[0]} \n Files: {response_data[1]}")
                     response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
+                else:
+                    response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+
+            case "CREATE_FILE":
+                logging.debug("verb = CREATE_FILE")
+                if is_token_valid:
+                    if self.file_service.can_create_file(username, data[0], data[1]):
+                        response = self.write_message("SUCCESS", client_token, "READY_FOR_DATA")
+                        needs_data = True
+                    else:
+                        response = self.write_message("ERROR", client_token, "FILE_EXISTS")
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
 
@@ -105,6 +125,14 @@ class ServerClass:
 
         logging.debug(f"Response Data: {response_data}")
         logging.debug(f"Response Data Length: {len(response_data)}")
+
+        if needs_data:
+            logging.debug("Waiting for Data")
+            data_received = self.receive_data(client)
+            if self.file_service.create_file(username, data[0], data[1], data_received):
+                self.respond_to_client(client, self.write_message("SUCCESS", client_token, "FILE_CREATED"))
+            else:
+                self.respond_to_client(client, self.write_message("ERROR", client_token, "FILE_NOT_CREATED"))
 
         if len(response_data) > 0:
             logging.debug("Sending Data")
@@ -135,23 +163,35 @@ class ServerClass:
         client.sendall(str_to_send)
         logging.debug("Finished Sending Data")
 
-    def server_close(self): ############################################ shutdown hook
+    def server_close(self):
         self.server.close()
         self.is_server_running = False
-        logging.info("Server Closed.")
 
-    # to be deprecated
-    # def send_file(self, client, path):
-    #     file_size = self.file_service.get_file_size(path)
-    #     client.send(str(file_size).encode())
-    #     contents = self.file_service.get_file_contents(path)
-    #     client.sendall(contents)
-    #     client.send(seperator, end_flag)
+    def receive_data(self, client):
+        finished = False
+        received_data = b""
+
+        logging.debug("Initializing data receiving")
+
+        while not finished:
+            data_chunk = client.recv(buffer_size)
+
+            if data_chunk.endswith(end_flag):
+                finished = True
+                received_data += data_chunk[:-len(end_flag)]
+            else:
+                received_data += data_chunk
+
+        logging.info(f"finished receiving data: {received_data}")
+
+        return received_data
+
+
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     a = ServerClass()
-
+    atexit.register(ServerClass.server_close, a)
 
 

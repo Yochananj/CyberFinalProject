@@ -1,5 +1,17 @@
 import logging
 import os
+import sys
+from pathlib import Path
+
+# Ensure project root is on sys.path so 'Client' and 'Dependencies' can be imported
+CURRENT_FILE = Path(__file__).resolve()
+# For /.../CyberFinalProject/Client/GUI/src/main.py:
+# CURRENT_FILE.parents[3] -> /.../CyberFinalProject (project root)
+PROJECT_ROOT = CURRENT_FILE.parents[3]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import flet as ft
 from Client.Services.ClientCommsManager import ClientClass
 from Client.GUI.src.Controllers.HomeController import HomeController

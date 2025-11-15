@@ -44,15 +44,14 @@ class FilesDatabaseDAO:
         return FilesDB.select().where(FilesDB.file_owner_id == file_owner_id and FilesDB.user_file_path == user_file_path and FilesDB.user_file_name == user_file_name).exists()
 
     def get_all_dirs_in_path(self, file_owner_id, path):
-        lst = list(FilesDB.select().where(
-            FilesDB.file_owner_id == file_owner_id
-            and FilesDB.user_file_path.startswith(path)
-        ))
-        logging.debug(f"Dirs by start with: {lst} \n Filtering...")
-        for item in lst:
-            if not len(self.filter_empty_strings(str(item.user_file_path).split("/"))) == len(self.filter_empty_strings(path.split("/"))) + 1:
-                lst.remove(item)
-
+        lst = list(
+            FilesDB.select().where(
+                FilesDB.file_owner_id == file_owner_id
+                and FilesDB.user_file_path.startswith(path)
+            )
+        )
+        logging.debug(f"Dirs that start with: {lst} \n Filtering...")
+        lst = self._remove_files_not_one_dir_deeper(lst, path)
         return lst
 
     def get_all_files_in_path(self, file_owner_id, path):
@@ -61,18 +60,36 @@ class FilesDatabaseDAO:
     def close_db(self):
         files_db.close()
 
-    def filter_empty_strings(self, list_to_filter: list):
+    def _remove_files_not_one_dir_deeper(self, lst: list, path):
+        logging.debug(f"Removing files not one dir deeper than {path}.")
+        required_dirs_deep = len(self._filter_empty_strings(path.split("/"))) + 1
+        logging.debug(f"Required Dirs Deep: {required_dirs_deep}")
+
+        to_return_list = []
+
+        for item in lst:
+            logging.debug(f"Checking {item.user_file_path}")
+            file_path_parts = self._filter_empty_strings(str(item.user_file_path).split("/"))
+            if len(file_path_parts) == required_dirs_deep:
+                to_return_list.append(item)
+            else:
+                logging.debug(f"Removed {item.user_file_path}")
+
+        return to_return_list
+
+    def _filter_empty_strings(self, list_to_filter: list):
         logging.debug(f"Filtering empty strings from list {list_to_filter}.")
+        to_return_list = []
         for item in list_to_filter:
-            if item == "":
-                list_to_filter.remove(item)
-        return list_to_filter
+            if len(item) != 0:
+                to_return_list.append(item)
+        logging.debug(f"Filtered list: {to_return_list}")
+        return to_return_list
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
     dao = FilesDatabaseDAO()
-    # dao.create_file(123, "/a/b/c", 1223123, "bloop.txt", 12345)
-    for file in dao.get_all_dirs_in_path(123, '/'):
+    for file in dao.get_all_dirs_in_path(123, '/a'):
         print(file.user_file_path)
     files_db.close()

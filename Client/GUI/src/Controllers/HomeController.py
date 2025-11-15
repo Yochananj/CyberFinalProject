@@ -39,37 +39,6 @@ class HomeController:
         self.view.nav_rail.on_change = self.mini_navigator
         self.attach_handlers_per_destination()
 
-    def attach_handlers_per_destination(self):
-        match self.view.nav_rail.selected_index:
-            case 0:  # Files container
-                pass
-
-            case 1:  # Account container
-                self.account_container.log_out_button.on_click = lambda e: self.log_out()
-
-            case 2:  # Settings container
-                pass
-
-    def get_file_list(self):
-        logging.debug("Getting file list")
-        status, dirs_and_files = self.comms_manager.send_message(verb=Verbs.GET_FILES_LIST, data=[self.current_dir])
-        dirs, files = [], []
-
-
-        logging.debug(f"status: {status}")
-        logging.debug(f"dirs_and_files: <{dirs_and_files}>, type: {type(dirs_and_files)}")
-        logging.debug(f"dirs_and_files[0]: {dirs_and_files[0]}")
-
-
-        if dirs_and_files[0]:
-            dirs, files = json.loads(dirs_and_files[0]), json.loads(dirs_and_files[1])
-
-        return dirs, files
-
-    def log_out(self):
-        self.navigator(ViewsAndRoutesList.LOG_IN)
-        self.comms_manager.token = 'no_token'
-
     def mini_navigator(self, control_event=None):
         logging.debug(f"switched to destination: {self.view.nav_rail.selected_index}")
         logging.debug(control_event)
@@ -79,29 +48,44 @@ class HomeController:
                 self.page.title = "CryptDrive: Files"
                 self.container = self.file_container
 
-                self.container.column.controls.clear()
+                self.container.column.controls = []
                 self.container.column.controls.append(self.container.title)
+                self.container.column.controls.append(self.container.loading)
 
+                self.view.body.content = self.container.build()
+                self.page.update()
 
-                if self.current_dir is "/": self.container.column.controls.append(FolderTile(folder_name="", item_count=None, is_current_directory=True, path=self.current_dir, root=True).tile)
-                else: self.container.column.controls.append(FolderTile(folder_name=self.current_dir.split("/")[-1], item_count=None, is_current_directory=True, path=self.current_dir[0:len(self.current_dir) - len(self.current_dir.split("/")[-1])]).tile)
+                self.container.column.controls.remove(self.container.loading)
 
+                if self.current_dir == "/":
+                    self.container.current_directory = FolderTile(path=self.current_dir, item_count=None, is_current_directory=True, root=True)
+                else:
+                    self.container.current_directory = FolderTile(path=self.current_dir, item_count=None, is_current_directory=True)
+
+                self.container.column.controls.append(self.container.current_directory.tile)
 
                 dir_list, file_list = self.get_file_list()
+
+                self.container.directories, self.container.files = [], []
+
                 for directory in dir_list:
-                    self.container.column.controls.append(
+                    self.container.directories.append(
                         FolderTile(
-                            folder_name=directory["path"].split("/")[-1],
+                            path=directory["path"],
                             item_count=directory["item_count"]
-                        ).tile
+                        )
                     )
                 for file in file_list:
-                    self.container.column.controls.append(
+                    self.container.files.append(
                         FileTile(
                             file_name=file["name"],
                             file_size=file["size"]
-                        ).tile
+                        )
                     )
+                for directory in self.container.directories:
+                    self.container.column.controls.append(directory.tile)
+                for file in self.container.files:
+                    self.container.column.controls.append(file.tile)
 
             case 1:  # Account container
                 self.page.title = "CryptDrive: Account"
@@ -125,3 +109,44 @@ class HomeController:
         else:
             self.page.views[0].floating_action_button = None
         self.page.update()
+
+    def attach_handlers_per_destination(self):
+        match self.view.nav_rail.selected_index:
+            case 0:  # Files container
+                parent_dir = self.container.current_directory.path[:-1]
+                if parent_dir == "": parent_dir = "/"
+                if self.container.current_directory.path + self.container.current_directory.name != "/":
+                    self.container.current_directory.tile.on_click = lambda e: self.change_dir(parent_dir)
+                for directory in self.container.directories:
+                    directory.tile.on_click = lambda e: self.change_dir(directory.path + directory.name)
+
+            case 1:  # Account container
+                self.account_container.log_out_button.on_click = lambda e: self.log_out()
+
+            case 2:  # Settings container
+                pass
+
+    def change_dir(self, path):
+        self.current_dir = path
+        self.mini_navigator()
+
+    def get_file_list(self):
+        logging.debug("Getting file list")
+        status, dirs_and_files = self.comms_manager.send_message(verb=Verbs.GET_FILES_LIST, data=[self.current_dir])
+        dirs, files = [], []
+
+        logging.debug(f"status: {status}")
+        logging.debug(f"dirs_and_files: <{dirs_and_files}>, type: {type(dirs_and_files)}")
+        logging.debug(f"dirs_and_files[0]: {dirs_and_files[0]}")
+
+        if dirs_and_files[0]:
+            dirs, files = json.loads(dirs_and_files[0]), json.loads(dirs_and_files[1])
+
+        return dirs, files
+
+    def log_out(self):
+        self.navigator(ViewsAndRoutesList.LOG_IN)
+        self.comms_manager.token = 'no_token'
+
+
+

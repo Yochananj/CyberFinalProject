@@ -1,11 +1,24 @@
 import flet as ft
 
-from Dependencies.Constants import crypt_drive_blue_semilight, crypt_drive_purple
+from Dependencies.Constants import crypt_drive_blue_semilight, crypt_drive_purple, crypt_drive_blue
 
 
 class FilesContainer:
     def __init__(self):
-        self.title = ft.Text("Your Files")
+        self.title = ft.Text(value="Your Files", font_family="Aeonik Black", size=90, color=crypt_drive_blue)
+        self.loading = ft.Container(
+            content=
+                ft.Row(
+                    controls=[
+                    ft.ProgressRing(color=crypt_drive_blue, aspect_ratio=1, stroke_width=8, stroke_cap=ft.StrokeCap.ROUND),
+                    ],
+                    height=60,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+            expand=False,
+            alignment=ft.Alignment(0,0),
+            height=600,
+        )
         self.fab = ft.FloatingActionButton(
             bgcolor=crypt_drive_blue_semilight,
             icon=ft.Icons.FILE_UPLOAD_OUTLINED,
@@ -15,10 +28,12 @@ class FilesContainer:
             height=90
         )
         self.column = ft.Column(
-            controls=[
-                self.title,
-            ],
+            controls=[],
         )
+        self.current_directory: FolderTile = None
+        self.directories: list[FolderTile] = []
+        self.files: list[FileTile] = []
+
     def build(self):
         return self.column
 
@@ -64,24 +79,28 @@ class FileTile:
 
 
 class FolderTile:
-    def __init__(self, folder_name, item_count, is_current_directory=False, path=None, root=False):
-        self.name = folder_name
+    def __init__(self, path, item_count, is_current_directory=False, root=False):
+        self.name = path.split("/")[-1]
+        if self.name == "": self.path = "/"
+        else: self.path = path[:-len(self.name)]
         self.items = item_count
         self.parent_icon = ft.Icons.DRIVE_FOLDER_UPLOAD_ROUNDED
+        self.tooltip = "Click to return to Parent Folder"
 
         if root:
             self.parent_icon = ft.Icons.HOME_ROUNDED
+            self.tooltip = "Already at root folder"
 
         if is_current_directory:
             self.tile = ft.Container(
                 content=ft.Row(
                     controls=[
                         ft.Icon(self.parent_icon, color=crypt_drive_purple),
-                        ft.Text(path, font_family="Aeonik Bold", size=20),
-                        ft.Text(folder_name, font_family="Aeonik Black", size=20)
+                        ft.Text(self.path, font_family="Aeonik Bold", size=20),
+                        ft.Text(self.name, font_family="Aeonik Black", size=20)
                     ],
                 ),
-                tooltip="Return to Parent Folder", border_radius=10, bgcolor=crypt_drive_blue_semilight, padding=ft.padding.only(left=10, right=10, top=10, bottom=10)
+                tooltip=self.tooltip, border_radius=10, bgcolor=crypt_drive_blue_semilight, padding=ft.padding.only(left=10, right=10, top=10, bottom=10)
             )
         else:
             self.tile = ft.Container(
@@ -93,7 +112,7 @@ class FolderTile:
                                 ft.Row(
                                     controls =[
                                         ft.Text(self.name, font_family="Aeonik Bold", size=20),
-                                        ft.Text(f"{self.items} items", font_family="Aeonik", size=16)
+                                        ft.Text(f"{self.get_items_string(self.items)}", font_family="Aeonik", size=16)
                                     ]
                                 )
                             ], expand = True
@@ -109,9 +128,19 @@ class FolderTile:
                             tooltip="Delete Folder"
                         )
                     ]
-                ), border_radius=10, bgcolor=crypt_drive_blue_semilight, padding=ft.padding.only(left=10, right=10, top=10, bottom=10)
+                ),
+                border_radius=10,
+                bgcolor=crypt_drive_blue_semilight,
+                padding=ft.padding.all(10),
+                tooltip="Click to open folder"
             )
 
+
+    def get_items_string(self, item_count: int):
+        if item_count == 1:
+            return "1 item"
+        else:
+            return f"{item_count} items"
 
 
 
