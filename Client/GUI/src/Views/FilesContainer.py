@@ -10,7 +10,7 @@ class FilesContainer:
             content=
                 ft.Row(
                     controls=[
-                    ft.ProgressRing(color=crypt_drive_blue, aspect_ratio=1, stroke_width=8, stroke_cap=ft.StrokeCap.ROUND),
+                    ft.ProgressRing(color=crypt_drive_purple, aspect_ratio=1, stroke_width=8, stroke_cap=ft.StrokeCap.ROUND),
                     ],
                     height=60,
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -42,6 +42,21 @@ class FileTile:
     def __init__(self, file_name, file_size):
         self.name = file_name
         self.size = file_size
+        self.edit = ft.IconButton(
+            ft.Icons.EDIT_DOCUMENT,
+            on_click=lambda _: None,
+            tooltip="Rename File"
+        )
+        self.download = ft.IconButton(
+            ft.Icons.FILE_DOWNLOAD_OUTLINED,
+            on_click=lambda _: None,
+            tooltip="Download File"
+        )
+        self.delete = ft.IconButton(
+            ft.Icons.DELETE,
+            on_click=lambda _: None,
+            tooltip="Delete File"
+        )
 
         self.tile = ft.Container(
             content=ft.Row(
@@ -57,21 +72,9 @@ class FileTile:
                             )
                         ], expand = True
                     ),
-                    ft.IconButton(
-                        ft.Icons.EDIT_DOCUMENT,
-                        on_click=lambda _: None,
-                        tooltip="Rename File"
-                    ),
-                    ft.IconButton(
-                        ft.Icons.FILE_DOWNLOAD_OUTLINED,
-                        on_click=lambda _: None,
-                        tooltip="Download File"
-                    ),
-                    ft.IconButton(
-                        ft.Icons.DELETE,
-                        on_click=lambda _: None,
-                        tooltip="Delete File"
-                    )
+                    self.edit,
+                    self.download,
+                    self.delete,
                 ]
             ), border_radius=10, bgcolor=crypt_drive_blue_semilight, padding=ft.padding.only(left=10, right=10, top=10, bottom=10)
         )
@@ -103,6 +106,16 @@ class FolderTile:
                 tooltip=self.tooltip, border_radius=10, bgcolor=crypt_drive_blue_semilight, padding=ft.padding.only(left=10, right=10, top=10, bottom=10)
             )
         else:
+            self.rename = ft.IconButton(
+                ft.Icons.EDIT,
+                on_click=lambda _: None,
+                tooltip="Rename Folder"
+            )
+            self.delete = ft.IconButton(
+                ft.Icons.DELETE,
+                on_click=lambda _: None,
+                tooltip="Delete Folder"
+            )
             self.tile = ft.Container(
                 content=ft.Row(
                     controls=[
@@ -117,16 +130,8 @@ class FolderTile:
                                 )
                             ], expand = True
                         ),
-                        ft.IconButton(
-                            ft.Icons.EDIT,
-                            on_click=lambda _: None,
-                            tooltip="Rename Folder"
-                        ),
-                        ft.IconButton(
-                            ft.Icons.DELETE,
-                            on_click=lambda _: None,
-                            tooltip="Delete Folder"
-                        )
+                        self.rename,
+                        self.delete,
                     ]
                 ),
                 border_radius=10,

@@ -91,10 +91,11 @@ class ServerClass:
 
             case "DOWNLOAD_FILE":
                 logging.debug("verb = DOWNLOAD_FILE")
-                # if is_token_valid:
-                #     self.send_file(client, data) ################################
-                # else:
-                #     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+                if is_token_valid:
+                    response_data.append(self.file_service.get_file_contents(username, data[0], data[1]))
+                    response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
+                else:
+                    response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
 
             case "GET_FILES_LIST":
                 logging.debug("verb = GET_FILES_LIST")
@@ -139,9 +140,11 @@ class ServerClass:
             self.send_data(client, response_data)
 
     def write_message(self, success, token, status_code=None):
+        logging.debug(f"Writing Message: Success?: {success}")
         message = success + seperator + token
         if status_code:
             message += seperator + status_code
+        logging.debug(f"Final Message: {message}")
         return message
 
     def respond_to_client(self, client, message):
@@ -151,12 +154,14 @@ class ServerClass:
 
     def send_data(self, client, data: list):
         logging.debug("Starting to send Data")
-        str_to_send = ""
+        str_to_send = b""
         for item in data:
-            str_to_send += str(item)
-            str_to_send += seperator
+            if isinstance(item, str):
+                str_to_send += item.encode()
+            else:
+                str_to_send += bytes(item)
+            str_to_send += seperator.encode()
             logging.debug(f"Current Data: {str_to_send}")
-        str_to_send = str_to_send.encode()
         str_to_send += end_flag
         logging.debug(f"Final Data: {str_to_send}")
         time.sleep(0.5)
@@ -182,7 +187,8 @@ class ServerClass:
             else:
                 received_data += data_chunk
 
-        logging.info(f"finished receiving data: {received_data}")
+        logging.info(f"finished receiving data:")
+        if len(received_data) < 5000: logging.info(f"{received_data}")
 
         return received_data
 

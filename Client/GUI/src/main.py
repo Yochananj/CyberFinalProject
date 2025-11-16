@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+from Client.Services.ClientFileService import FileService
+
 # Ensure project root is on sys.path so 'Client' and 'Dependencies' can be imported
 CURRENT_FILE = Path(__file__).resolve()
 # For /.../CyberFinalProject/Client/GUI/src/main.py:
@@ -29,6 +31,7 @@ class GUI:
         self.top_view = None
         self.controller = None
         self.comms_manager = ClientClass()
+        self.file_service = FileService()
 
         self.page = page
         self.page.window.icon = "window_icon.ico"
@@ -69,7 +72,7 @@ class GUI:
                 self.page.views.clear()
                 self.top_view = HomeView(self.page.window.height, self.page.window.width)
                 self.page.views.append(self.top_view.build())
-                self.controller = HomeController(page=self.page, view=self.top_view, navigator=self.navigator, comms_manager=self.comms_manager)
+                self.controller = HomeController(page=self.page, view=self.top_view, navigator=self.navigator, comms_manager=self.comms_manager, client_file_service=self.file_service)
 
         self.page.update()
 

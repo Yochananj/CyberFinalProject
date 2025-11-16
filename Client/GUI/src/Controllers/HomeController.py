@@ -1,7 +1,9 @@
 import json
 import logging
+import os.path
 
 import flet as ft
+import platformdirs
 
 from Client.GUI.src.Views.AccountContainer import AccountContainer
 from Client.GUI.src.Views.FilesContainer import FilesContainer, FileTile, FolderTile
@@ -13,7 +15,7 @@ from Dependencies.VerbDictionary import Verbs
 
 
 class HomeController:
-    def __init__(self, page: ft.Page, view: HomeView, navigator, comms_manager):
+    def __init__(self, page: ft.Page, view: HomeView, navigator, comms_manager, client_file_service):
         self.view = view
         self.navigator = navigator
         self.comms_manager = comms_manager
@@ -21,6 +23,7 @@ class HomeController:
         self.page.theme = crypt_drive_theme
         self.container = None
         self.current_dir = "/"
+        self.client_file_service = client_file_service
 
         self.page.fonts = crypt_drive_fonts
 
@@ -118,7 +121,11 @@ class HomeController:
                 if self.container.current_directory.path + self.container.current_directory.name != "/":
                     self.container.current_directory.tile.on_click = lambda e: self.change_dir(parent_dir)
                 for directory in self.container.directories:
-                    directory.tile.on_click = lambda e: self.change_dir(directory.path + directory.name)
+                    directory.tile.on_click = lambda e, dp = directory.path, dn = directory.name: self.change_dir(dp + dn)
+
+                for file in self.container.files:
+                    file.download.on_click = lambda e, fn=file.name: self.download_file(fn)
+
 
             case 1:  # Account container
                 self.account_container.log_out_button.on_click = lambda e: self.log_out()
@@ -129,6 +136,15 @@ class HomeController:
     def change_dir(self, path):
         self.current_dir = path
         self.mini_navigator()
+
+    def download_file(self, file_name):
+        status, file_bytes = self.comms_manager.send_message(verb=Verbs.DOWNLOAD_FILE, data=[self.current_dir, file_name])
+        if status == "SUCCESS":
+            logging.debug("Download successful \n Writing to file")
+            self.client_file_service.save_file_to_disk(platformdirs.user_downloads_path(), file_name, file_bytes)
+            logging.debug("File saved successfully")
+        else:
+            logging.debug("Download failed")
 
     def get_file_list(self):
         logging.debug("Getting file list")

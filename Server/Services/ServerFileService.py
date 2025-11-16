@@ -43,6 +43,7 @@ class FileService:
             logging.error("File does not exist.")
 
     def get_file_contents(self, file_owner, user_file_path, file_name):
+        logging.debug(f"Getting file contents for {file_owner}@{user_file_path}/{file_name}.")
         file_owner_id = self.users_service.get_user_id(file_owner)
         file_uuid = self.files_database_dao.get_file_uuid(file_owner_id, user_file_path, file_name)
         file_contents = self.files_disk_dao.get_file_contents(file_owner_id, file_uuid)

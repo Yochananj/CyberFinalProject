@@ -35,6 +35,7 @@ class ClientClass:
             case Verbs.DOWNLOAD_FILE:
                 logging.debug("Sending: DOWNLOAD_FILE")
                 message = self.write_message(verb, data)
+                receiving_byte_data = True
 
             case Verbs.GET_FILES_LIST:
                 logging.debug("Sending: GET_FILES_LIST")
@@ -55,7 +56,7 @@ class ClientClass:
         if b == "READY_FOR_DATA":
             logging.debug("Sending data")
             str_to_send = data[-1]
-            if type(data[-1]) != bytes:
+            if not isinstance(str_to_send, bytes):
                 str_to_send = str_to_send.encode()
             str_to_send += end_flag
             self.sock.sendall(str_to_send)
@@ -72,29 +73,28 @@ class ClientClass:
 
         status_parts = status.split(seperator)
 
+        to_return_data = ""
+        if len(status_parts) == 3: to_return_data = status_parts[2]
+
         self.token = status_parts[1]
         logging.debug(f"Saved Token: {self.token}")
 
 
         if status_parts[0] == "ERROR":
             logging.debug("Error Occurred")
-            logging.debug(f"Error Code: {status_parts[2]}")
-            return status_parts[0], status_parts[2]
+            logging.debug(f"Error Code: {to_return_data}")
+        else:
+            logging.debug("Request Successful")
 
-        logging.debug("Request Successful")
-
-        to_return_data = ""
-
-        if len(status_parts) == 3 and status_parts[2] == "SENDING_DATA":
+        if to_return_data == "SENDING_DATA":
             logging.debug("Receiving Data")
             to_return_data = self.receive_data(is_receiving_byte_data)
             logging.debug(f"Received Data: {to_return_data}, now splitting.")
-            to_return_data = to_return_data.split(seperator)
+            if not is_receiving_byte_data: to_return_data = to_return_data.split(seperator)
+            else: to_return_data = to_return_data.split(seperator.encode())
+            if len(to_return_data) == 1: to_return_data = to_return_data[0]
 
-
-        if len(to_return_data) != 0: return status_parts[0], to_return_data
-        if len(status_parts) == 3: return status_parts[0], status_parts[2]
-        return status_parts[0], None
+        return status_parts[0], to_return_data
 
     def connect_to_server(self, host_address=host_addr):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -116,9 +116,9 @@ class ClientClass:
         file_size = self.sock.recv(buffer_size).decode()
         logging.info(f"File size is: {file_size} bytes")
 
-        file_contents = self.receive_data(file_size)
+        file_bytes = self.receive_data(file_size)
 
-        return file_contents
+        return file_bytes
 
     def receive_data(self, is_byte_data=False, file_size=None):
         finished = False
@@ -159,6 +159,6 @@ if __name__ == "__main__":
     with open("/Users/yocha/Python Stuff/www/R8.jpg", "rb") as file:
         file_contents = file.read(-1)
 
-    client.send_message(Verbs.CREATE_FILE, ["/", "r8", file_contents])
+    client.send_message(Verbs.CREATE_FILE, ["/", "R8.jpg", file_contents])
 
     client.sock.close()

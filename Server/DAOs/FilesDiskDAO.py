@@ -20,6 +20,7 @@ class FilesDiskDAO:
         return os.path.getsize(full_file_path)
 
     def get_file_contents(self, file_owner_id, file_uuid):
+        logging.debug(f"Getting file contents from {file_owner_id}/{file_uuid}.")
         full_file_path = self.get_full_file_path(file_owner_id, file_uuid)
         with open(full_file_path, "rb") as file:
             file_contents = file.read(-1)

@@ -30,10 +30,15 @@ seperator = "|||"
 end_flag = b"||| END |||"
 
 
-# Server Constants
+# Common Constants
 server_address = "127.0.0.1"
 server_port = 8081
 host_addr = (server_address, server_port)
+
+buffer_size = 1024
+
+
+# Server-Only Constants:
 server_storage_path = platformdirs.user_data_path(app_name)
 
 
@@ -50,4 +55,3 @@ with open(PRIVATE_KEY_PATH, "r") as file:
     private_key = file.read()
 
 # Numerical Constants
-buffer_size = 1024

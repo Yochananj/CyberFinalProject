@@ -1,18 +1,15 @@
 import logging
-import math
 import os
-
-from Dependencies.Constants import buffer_size, end_flag
 
 
 class FileService:
     def __init__(self):
         pass
 
-
-    def write_file_to_disk(self, file_contents, path_to_save_to, file_name):
-        os.makedirs(path_to_save_to)
+    def save_file_to_disk(self, path_to_save_to, file_name, file_contents):
+        os.makedirs(path_to_save_to, exist_ok=True)
         with open(os.path.join(path_to_save_to, file_name), "wb") as file:
+            logging.debug(f"Writing file {file_name} to {path_to_save_to} on the disk.")
             file.write(file_contents)
         logging.debug(f"File {file_name} written to {path_to_save_to} on the disk.")
 
