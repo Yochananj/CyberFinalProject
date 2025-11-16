@@ -76,8 +76,8 @@ class ServerClass:
             case "SIGN_UP":
                 logging.debug("verb = SIGN_UP")
                 if self.user_service.create_user(data[0], data[1]):
-                    logging.debug(f"Created User: {data[0]}, with password hash: {data[0]}")
-                    response = self.write_message("SUCCESS", self.token_service.create_token(username=data[1]))
+                    logging.debug(f"Created User: {data[0]}, with password hash: {data[1]}")
+                    response = self.write_message("SUCCESS", self.token_service.create_token(username=data[0]))
                 else:
                     logging.debug(f"User {data[0]} already exists.")
                     response = self.write_message("ERROR", client_token, "USER_EXISTS")
@@ -120,7 +120,6 @@ class ServerClass:
 
             case _:
                 logging.debug("Invalid Verb")
-
         logging.debug(f"Sending Response: {response}")
         self.respond_to_client(client, response)
 

@@ -1,3 +1,5 @@
+import uuid
+
 import flet as ft
 
 from Dependencies.Constants import crypt_drive_blue_semilight, crypt_drive_purple, crypt_drive_blue
@@ -8,16 +10,16 @@ class FilesContainer:
         self.title = ft.Text(value="Your Files", font_family="Aeonik Black", size=90, color=crypt_drive_blue)
         self.loading = ft.Container(
             content=
-                ft.Row(
-                    controls=[
+            ft.Row(
+                controls=[
                     ft.ProgressRing(color=crypt_drive_purple, aspect_ratio=1, stroke_width=8, stroke_cap=ft.StrokeCap.ROUND),
-                    ],
-                    height=60,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-            expand=False,
+                ],
+                height=60,
+                alignment=ft.MainAxisAlignment.CENTER,
+                expand=True,
+            ),
+            expand=True,
             alignment=ft.Alignment(0,0),
-            height=600,
         )
         self.fab = ft.FloatingActionButton(
             bgcolor=crypt_drive_blue_semilight,
@@ -29,6 +31,19 @@ class FilesContainer:
         )
         self.column = ft.Column(
             controls=[],
+            expand=True,
+        )
+        self.tiles = ft.Column(
+            controls=[],
+        )
+        self.animator = ft.AnimatedSwitcher(
+            content=self.tiles,
+            transition=ft.AnimatedSwitcherTransition.FADE,
+            duration=500,
+            reverse_duration=500,
+            switch_in_curve=ft.AnimationCurve.EASE_IN_CIRC,
+            switch_out_curve=ft.AnimationCurve.EASE_OUT_CIRC,
+            expand=True,
         )
         self.current_directory: FolderTile = None
         self.directories: list[FolderTile] = []
@@ -42,22 +57,21 @@ class FileTile:
     def __init__(self, file_name, file_size):
         self.name = file_name
         self.size = file_size
-        self.edit = ft.IconButton(
-            ft.Icons.EDIT_DOCUMENT,
-            on_click=lambda _: None,
-            tooltip="Rename File"
-        )
         self.download = ft.IconButton(
             ft.Icons.FILE_DOWNLOAD_OUTLINED,
             on_click=lambda _: None,
             tooltip="Download File"
+        )
+        self.edit = ft.IconButton(
+            ft.Icons.EDIT,
+            on_click=lambda _: None,
+            tooltip="Rename File"
         )
         self.delete = ft.IconButton(
             ft.Icons.DELETE,
             on_click=lambda _: None,
             tooltip="Delete File"
         )
-
         self.tile = ft.Container(
             content=ft.Row(
                 controls=[
@@ -72,8 +86,8 @@ class FileTile:
                             )
                         ], expand = True
                     ),
-                    self.edit,
                     self.download,
+                    self.edit,
                     self.delete,
                 ]
             ), border_radius=10, bgcolor=crypt_drive_blue_semilight, padding=ft.padding.only(left=10, right=10, top=10, bottom=10)

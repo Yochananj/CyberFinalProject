@@ -1,6 +1,5 @@
 import json
 import logging
-import os.path
 
 import flet as ft
 import platformdirs
@@ -52,20 +51,25 @@ class HomeController:
                 self.container = self.file_container
 
                 self.container.column.controls = []
+                self.container.tiles.controls = []
                 self.container.column.controls.append(self.container.title)
-                self.container.column.controls.append(self.container.loading)
+                self.container.column.controls.append(self.container.animator)
+
 
                 self.view.body.content = self.container.build()
                 self.page.update()
 
-                self.container.column.controls.remove(self.container.loading)
+                self.container.animator.content = self.container.loading
+                self.container.animator.update()
+
+                self.container.animator.content = self.container.tiles
 
                 if self.current_dir == "/":
                     self.container.current_directory = FolderTile(path=self.current_dir, item_count=None, is_current_directory=True, root=True)
                 else:
                     self.container.current_directory = FolderTile(path=self.current_dir, item_count=None, is_current_directory=True)
 
-                self.container.column.controls.append(self.container.current_directory.tile)
+                self.container.tiles.controls.append(self.container.current_directory.tile)
 
                 dir_list, file_list = self.get_file_list()
 
@@ -85,10 +89,6 @@ class HomeController:
                             file_size=file["size"]
                         )
                     )
-                for directory in self.container.directories:
-                    self.container.column.controls.append(directory.tile)
-                for file in self.container.files:
-                    self.container.column.controls.append(file.tile)
 
             case 1:  # Account container
                 self.page.title = "CryptDrive: Account"
@@ -109,6 +109,12 @@ class HomeController:
 
         if self.view.nav_rail.selected_index == 0:
             self.page.views[0].floating_action_button = self.container.fab
+
+            for directory in self.container.directories:
+                self.container.tiles.controls.append(directory.tile)
+            for file in self.container.files:
+                self.container.tiles.controls.append(file.tile)
+            self.container.animator.update()
         else:
             self.page.views[0].floating_action_button = None
         self.page.update()

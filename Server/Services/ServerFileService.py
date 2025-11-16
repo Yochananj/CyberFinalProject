@@ -14,6 +14,7 @@ class FileService:
 
     def create_file(self, file_owner, user_file_path, user_file_name, file_contents):
         file_owner_id = self.users_service.get_user_id(file_owner)
+        logging.debug(f"Creating file for {file_owner}@{user_file_path}/{user_file_name}.")
         if not self.files_database_dao.does_file_exist(file_owner_id, user_file_path, user_file_name):
             # write to disk
             file_uuid = self.file_uuid_generator()
@@ -55,12 +56,12 @@ class FileService:
     def get_dirs_list_for_path(self, file_owner, path):
         logging.debug(f"Getting dirs list for path {path} for user {file_owner}.")
         file_owner_id = self.users_service.get_user_id(file_owner)
-
+        logging.debug(f"{file_owner} user id: {file_owner_id}")
         dirs_in_path = self.files_database_dao.get_all_dirs_in_path(file_owner_id, path)
 
         directories_list = []
         for directory in dirs_in_path:
-            temp_dir = Directory(directory.user_file_path, len(self.files_database_dao.get_all_files_in_path(file_owner_id, directory.user_file_path)))
+            temp_dir = Directory(directory.user_file_path, len(self.files_database_dao.get_all_files_in_path(file_owner_id, directory.user_file_path)) + self.files_database_dao.get_number_of_dirs_in_dir(file_owner_id, directory.user_file_path))
             if temp_dir.path not in [a.path for a in directories_list]:
                 directories_list.append(temp_dir)
         logging.debug(f"Filtered dirs list: {directories_list}")
@@ -99,7 +100,8 @@ class File:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    file_service = FileService()
+    user_service = UsersService()
+    file_service = FileService(user_service)
     temp_username = str(file_service.file_uuid_generator())
     temp_filename = str(file_service.file_uuid_generator())
     file_service.users_service.create_user(temp_username, "123456789")

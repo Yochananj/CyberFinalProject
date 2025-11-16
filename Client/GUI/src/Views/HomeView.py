@@ -23,6 +23,7 @@ class HomeView:
                     fit=ft.ImageFit.FIT_WIDTH,
                 ),
                 url="https://github.com/Yochananj/CyberFinalProject",
+                tooltip="About CryptDrive (Click)"
             ),
 
             destinations=[
@@ -47,7 +48,7 @@ class HomeView:
         self.body = ft.Container(
             height=window_height,
             width=window_width - 100,
-            content=[ft.Text("Body!")],
+            content=[],
             expand=True,
             bgcolor=crypt_drive_blue_light,
             border_radius=10,
@@ -62,7 +63,6 @@ class HomeView:
                            ft.Row(
                            controls=[
                                self.nav_rail,
-                               # ft.VerticalDivider(width=1, color=crypt_drive_blue),
                                self.body
                            ],
                            expand=True
