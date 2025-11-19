@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Any
 
 from Server.DAOs import FilesDatabaseDAO
 from Server.DAOs.FilesDiskDAO import FilesDiskDAO
@@ -15,14 +16,18 @@ class FileService:
     def create_file(self, file_owner, user_file_path, user_file_name, file_contents):
         file_owner_id = self.users_service.get_user_id(file_owner)
         logging.debug(f"Creating file for {file_owner}@{user_file_path}/{user_file_name}.")
-        if not self.files_database_dao.does_file_exist(file_owner_id, user_file_path, user_file_name):
+        if self.can_create_file(file_owner, user_file_path, user_file_name):
             # write to disk
-            file_uuid = self.file_uuid_generator()
+            file_uuid = self._file_uuid_generator()
             self.files_disk_dao.write_file_to_disk(file_owner_id, file_uuid, file_contents)
 
             # create in database
             file_size = self.files_disk_dao.get_file_size_on_disk(file_owner_id, file_uuid)
             self.files_database_dao.create_file(file_owner_id, user_file_path, file_uuid, user_file_name, file_size)
+
+            # update parent dir item count
+            parent_dir_name, parent_dir_path = self._get_parent_dir_name_and_path(user_file_path)
+            self.files_database_dao.increase_dir_item_count(file_owner_id, parent_dir_path, parent_dir_name)
 
             logging.debug(f"File {user_file_name} created.")
             return True
@@ -39,9 +44,54 @@ class FileService:
 
             # delete from database
             self.files_database_dao.delete_file(file_owner_id, user_file_path, user_file_name)
-            logging.debug(f"File {user_file_name} deleted.")
+
+            # update parent dir item count
+            parent_dir_name, parent_dir_path = self._get_parent_dir_name_and_path(user_file_path)
+            self.files_database_dao.decrease_dir_item_count(file_owner_id, parent_dir_path, parent_dir_name)
+
+            logging.debug(f"File {user_file_path}/{user_file_name} deleted.")
+            return True
         else:
             logging.error("File does not exist.")
+            return False
+
+    def create_dir(self, file_owner, user_file_path, user_file_name):
+        file_owner_id = self.users_service.get_user_id(file_owner)
+        if not self.files_database_dao.does_dir_exist(file_owner_id, user_file_path, user_file_name):
+            # create in database
+            self.files_database_dao.create_dir(file_owner_id, user_file_path, user_file_name)
+
+            # update parent dir item count
+            parent_dir_name, parent_dir_path = self._get_parent_dir_name_and_path(user_file_path)
+            self.files_database_dao.increase_dir_item_count(file_owner_id, parent_dir_path, parent_dir_name)
+
+            logging.debug(f"Directory {user_file_path}/{user_file_name} created.")
+            return True
+        else:
+            logging.debug("Directory already exists.")
+            return False
+
+    def delete_dir(self, file_owner, user_file_path, user_file_name):
+        file_owner_id = self.users_service.get_user_id(file_owner)
+        if self.files_database_dao.does_dir_exist(file_owner_id, user_file_path, user_file_name):
+            # delete files
+            for file in self.files_database_dao.get_all_files_in_path(file_owner_id, user_file_path):
+                self.delete_file(file_owner, file.user_file_path, file.user_file_name)
+            # delete subdirectories
+            for directory in self.files_database_dao.get_all_dirs_in_path(file_owner_id, user_file_path):
+                self.delete_dir(file_owner, directory.user_file_path, directory.user_file_name)
+            # delete from database
+            self.files_database_dao.delete_dir(file_owner_id, user_file_path, user_file_name)
+
+            # update parent dir item count
+            parent_dir_name, parent_dir_path = self._get_parent_dir_name_and_path(user_file_path)
+            self.files_database_dao.decrease_dir_item_count(file_owner_id, parent_dir_path, parent_dir_name)
+
+            logging.debug(f"Directory {user_file_path}/{user_file_name} deleted.")
+            return True
+        else:
+            logging.debug("Directory does not exist.")
+            return False
 
     def get_file_contents(self, file_owner, user_file_path, file_name):
         logging.debug(f"Getting file contents for {file_owner}@{user_file_path}/{file_name}.")
@@ -61,10 +111,10 @@ class FileService:
 
         directories_list = []
         for directory in dirs_in_path:
-            temp_dir = Directory(directory.user_file_path, len(self.files_database_dao.get_all_files_in_path(file_owner_id, directory.user_file_path)) + self.files_database_dao.get_number_of_dirs_in_dir(file_owner_id, directory.user_file_path))
-            if temp_dir.path not in [a.path for a in directories_list]:
-                directories_list.append(temp_dir)
-        logging.debug(f"Filtered dirs list: {directories_list}")
+            temp_dir = Directory(f"{directory.user_file_path}/{directory.user_file_name}", directory.file_size)
+            logging.debug(f"Temp dir: {temp_dir.__dict__}")
+            directories_list.append(temp_dir)
+        logging.debug(f"Dirs list: {directories_list.__dict__}")
         return directories_list
 
     def get_files_list_in_path(self, file_owner, path):
@@ -77,15 +127,20 @@ class FileService:
         logging.debug(f"File tuples list: {[file.__dict__ for file in files_list]}")
         return files_list
 
-    def file_uuid_generator(self):
+    def _file_uuid_generator(self):
         return uuid.uuid4().hex
 
     def can_create_file(self, file_owner, user_file_path, user_file_name):
         file_owner_id = self.users_service.get_user_id(file_owner)
-        if self.files_database_dao.does_file_exist(file_owner_id, user_file_path, user_file_name):
-            return False
-        else:
+        if not self.files_database_dao.does_file_exist(file_owner_id, user_file_path, user_file_name):
             return True
+        else:
+            return False
+
+    def _get_parent_dir_name_and_path(self, user_file_path) -> tuple[Any | None, str | Any]:
+        parent_dir_name = user_file_path.split("/")[-1] if user_file_path.split("/")[-1] != "" else "/"
+        parent_dir_path = user_file_path[:-len(parent_dir_name)] if parent_dir_name != "/" else None
+        return parent_dir_name, parent_dir_path
 
 class Directory:
     def __init__(self, path, item_count):
@@ -102,8 +157,8 @@ if __name__ == "__main__":
 
     user_service = UsersService()
     file_service = FileService(user_service)
-    temp_username = str(file_service.file_uuid_generator())
-    temp_filename = str(file_service.file_uuid_generator())
+    temp_username = str(file_service._file_uuid_generator())
+    temp_filename = str(file_service._file_uuid_generator())
     file_service.users_service.create_user(temp_username, "123456789")
     file_service.create_file(temp_username, "/a/b/c/d/", temp_filename, b"hello world")
     print(file_service.get_file_contents(temp_username,  "/a/b/c/d/", temp_filename))
