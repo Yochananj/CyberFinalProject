@@ -3,50 +3,32 @@ import socket
 import logging
 import time
 
-from Client.Services.ClientFileService import FileService
+from Client.GUI.src.Views.ViewsAndRoutesList import ViewsAndRoutesList
+from Client.Services.ClientFileService import ClientFileService
 from Client.Services.PasswordHashingService import PasswordHashingService
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
 
 
 class ClientClass:
-    def __init__(self):
+    def __init__(self, log_out=None):
         self.sock: socket.socket = None
-        self.file_service = FileService()
+        self.file_service = ClientFileService()
         self.token = "no_token"
+        self.navigator = log_out
         pass
 
     def send_message(self, verb: Verbs, data: list):
         logging.info("Sending Message")
         self.connect_to_server(host_addr)
 
-        message = ""
         receiving_byte_data = False
 
-        match verb:
-            case Verbs.SIGN_UP:
-                logging.debug("Sending: SIGN_UP")
-                message = self.write_message(verb, data)
+        logging.debug(f"Verb: {verb.value}")
+        message = self.write_message(verb, data if verb != Verbs.CREATE_FILE else data[:-1])
 
-            case Verbs.LOG_IN:
-                logging.debug("Sending: LOG_IN")
-                message = self.write_message(verb, data)
-
-            case Verbs.DOWNLOAD_FILE:
-                logging.debug("Sending: DOWNLOAD_FILE")
-                message = self.write_message(verb, data)
-                receiving_byte_data = True
-
-            case Verbs.GET_FILES_LIST:
-                logging.debug("Sending: GET_FILES_LIST")
-                message = self.write_message(verb, data)
-
-            case Verbs.CREATE_FILE:
-                logging.debug("Sending: CREATE_FILE")
-                message = self.write_message(verb, data[:-1])
-
-            case _:
-                logging.debug("Invalid Verb")
+        if verb == Verbs.DOWNLOAD_FILE:
+            receiving_byte_data = True
 
         self.sock.send(message.encode())
         logging.debug(f"Sent Message: {message} \n waiting for response. \n")
@@ -94,6 +76,8 @@ class ClientClass:
             else: to_return_data = to_return_data.split(seperator.encode())
             if len(to_return_data) == 1: to_return_data = to_return_data[0]
 
+        if to_return_data == "INVALID_TOKEN" and self.navigator:
+            self.navigator(ViewsAndRoutesList.LOG_IN)
         return status_parts[0], to_return_data
 
     def connect_to_server(self, host_address=host_addr):
@@ -102,7 +86,7 @@ class ClientClass:
         logging.info(('Connected to', host_addr))
 
     def write_message(self, verb: Verbs, data_parts: list):
-        logging.debug(f"Writing Message: {verb}, {data_parts[0:len(data_parts)]}")
+        logging.debug(f"Writing Message: {verb}, {data_parts}")
         message = verb.value + seperator + self.token + seperator
         logging.debug(f"Current Message: {message}")
         for i in range(len(data_parts) - 1):

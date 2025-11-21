@@ -6,6 +6,7 @@ import atexit
 from concurrent.futures import ThreadPoolExecutor
 
 from Dependencies.Constants import *
+from Dependencies.VerbDictionary import Verbs
 from Server.Services.ServerFileService import FileService
 from Server.Services.TokensService import TokensService
 from Server.Services.UsersService import UsersService
@@ -18,6 +19,7 @@ class ServerClass:
 
         self.user_service = UsersService()
         self.file_service = FileService(self.user_service)
+
         self.token_service = TokensService()
 
         self.host_addr = host_addr
@@ -56,7 +58,7 @@ class ServerClass:
         client_token = message_parts[1]
         data = message_parts[2:len(message_parts)]
 
-        logging.debug(f"Verb: {verb}, Token: {client_token}, Data: {data[0:len(data)]}")
+        logging.debug(f"Verb: {verb}, Token: {client_token},\n Data: {data[0:len(data)]}")
 
         is_token_valid = self.token_service.is_token_valid(client_token)
 
@@ -73,23 +75,25 @@ class ServerClass:
         needs_data = False
 
         match verb:
-            case "SIGN_UP":
+            case Verbs.SIGN_UP.value:
                 logging.debug("verb = SIGN_UP")
                 if self.user_service.create_user(data[0], data[1]):
                     logging.debug(f"Created User: {data[0]}, with password hash: {data[1]}")
+                    self.file_service.create_dir(data[0], None, "/")
+                    logging.debug(f"Created root directory for user: {data[0]}")
                     response = self.write_message("SUCCESS", self.token_service.create_token(username=data[0]))
                 else:
                     logging.debug(f"User {data[0]} already exists.")
                     response = self.write_message("ERROR", client_token, "USER_EXISTS")
 
-            case "LOG_IN":
+            case Verbs.LOG_IN.value:
                 logging.debug("verb = LOG_IN")
                 if self.user_service.login(data[0], data[1]):
                     response = self.write_message("SUCCESS", self.token_service.create_token(username=data[0]))
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_CREDENTIALS")
 
-            case "DOWNLOAD_FILE":
+            case Verbs.DOWNLOAD_FILE.value:
                 logging.debug("verb = DOWNLOAD_FILE")
                 if is_token_valid:
                     response_data.append(self.file_service.get_file_contents(username, data[0], data[1]))
@@ -97,17 +101,23 @@ class ServerClass:
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
 
-            case "GET_FILES_LIST":
+            case Verbs.GET_ITEMS_LIST.value:
                 logging.debug("verb = GET_FILES_LIST")
                 if is_token_valid:
-                    response_data.append(json.dumps([directory.__dict__ for directory in self.file_service.get_dirs_list_for_path(username, data[0])]))
-                    response_data.append(json.dumps([file_obj.__dict__ for file_obj in self.file_service.get_files_list_in_path(username, data[0])]))
+                    dirs = self.file_service.get_dirs_list_for_path(username, data[0])
+                    logging.debug(f"dirs: {dirs}")
+                    files = self.file_service.get_files_list_in_path(username, data[0])
+                    logging.debug(f"files: {files}")
+                    if len(dirs) > 0: response_data.append(json.dumps([directory.__dict__ for directory in dirs]))
+                    else: response_data.append(json.dumps([]))
+                    if len(files) > 0: response_data.append(json.dumps([file_obj.__dict__ for file_obj in files]))
+                    else: response_data.append(json.dumps([]))
                     logging.debug(f"Response data: \n Dirs: {response_data[0]} \n Files: {response_data[1]}")
                     response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
 
-            case "CREATE_FILE":
+            case Verbs.CREATE_FILE.value:
                 logging.debug("verb = CREATE_FILE")
                 if is_token_valid:
                     if self.file_service.can_create_file(username, data[0], data[1]):
@@ -118,6 +128,34 @@ class ServerClass:
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
 
+            case Verbs.DELETE_FILE.value:
+                logging.debug("verb = DELETE_FILE")
+                if is_token_valid:
+                    if self.file_service.delete_file(username, data[0], data[1]):
+                        response = self.write_message("SUCCESS", client_token)
+                    else:
+                        response = self.write_message("ERROR", client_token, "FILE_NOT_FOUND")
+                else :
+                    response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+
+            case Verbs.CREATE_DIR.value:
+                if is_token_valid:
+                    if self.file_service.create_dir(username, data[0], data[1]):
+                        response = self.write_message("SUCCESS", client_token)
+                    else:
+                        response = self.write_message("ERROR", client_token, "DIR_EXISTS")
+                else:
+                    response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+
+            case Verbs.DELETE_DIR.value:
+                logging.debug("verb = DELETE_DIR")
+                if is_token_valid:
+                    if self.file_service.delete_dir(username, data[0], data[1]):
+                        response = self.write_message("SUCCESS", client_token)
+                    else:
+                        response = self.write_message("ERROR", client_token, "DIR_NOT_FOUND")
+                else:
+                    response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
             case _:
                 logging.debug("Invalid Verb")
         logging.debug(f"Sending Response: {response}")

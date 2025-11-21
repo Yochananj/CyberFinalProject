@@ -3,7 +3,8 @@ import os
 import sys
 from pathlib import Path
 
-from Client.Services.ClientFileService import FileService
+from Client.GUI.src.Views.UIElements import error_alert
+from Client.Services.ClientFileService import ClientFileService
 
 # Ensure project root is on sys.path so 'Client' and 'Dependencies' can be imported
 CURRENT_FILE = Path(__file__).resolve()
@@ -31,7 +32,7 @@ class GUI:
         self.top_view = None
         self.controller = None
         self.comms_manager = ClientClass()
-        self.file_service = FileService()
+        self.file_service = ClientFileService()
 
         self.page = page
         self.page.window.icon = "window_icon.ico"
@@ -48,6 +49,7 @@ class GUI:
         self.page.theme_mode = "light"
         self.page.window.title_bar_hidden = True
         self.navigator(ViewsAndRoutesList.LOG_IN)
+        self.comms_manager.navigator = self.navigator
 
 
     def navigator(self, to_page: ViewsAndRoutesList, username: str = None, password: str = None):
@@ -56,15 +58,22 @@ class GUI:
 
         match to_page:
             case ViewsAndRoutesList.LOG_IN:
+                timed_out = False
+                if self.comms_manager.token != "no_token": timed_out = True
+
                 self.page.title = "CryptDrive: Log In"
                 self.page.views.clear()
                 self.top_view = LoginView(username_start_value=username, password_start_value=password)
+                self.page.theme= crypt_drive_theme
                 self.page.views.append(self.top_view.build())
                 self.controller = LoginController(page=self.page, view=self.top_view, navigator=self.navigator, comms_manager=self.comms_manager)
+
+                if timed_out: self.page.open(error_alert("Your Log In timed out. Please log in again."))
             case ViewsAndRoutesList.SIGN_UP:
                 self.page.title = "CryptDrive: Sign Up"
                 self.page.views.clear()
                 self.top_view = SignUpView(username_start_value=username, password_start_value=password)
+                self.page.theme= crypt_drive_theme
                 self.page.views.append(self.top_view.build())
                 self.controller = SignUpController(page=self.page, view=self.top_view, navigator=self.navigator, comms_manager=self.comms_manager)
             case ViewsAndRoutesList.HOME:

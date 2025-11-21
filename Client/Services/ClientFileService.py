@@ -2,7 +2,7 @@ import logging
 import os
 
 
-class FileService:
+class ClientFileService:
     def __init__(self):
         pass
 

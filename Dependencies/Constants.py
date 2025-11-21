@@ -16,7 +16,7 @@ crypt_drive_blue_light = "#E6E8FE"
 crypt_drive_blue_medium = "#9BA5FB"
 crypt_drive_purple = "#4A5086"
 crypt_drive_blue = "#3043FB"
-crypt_drive_theme = ft.Theme(color_scheme_seed=crypt_drive_blue, font_family="Aeonik")
+crypt_drive_theme = ft.Theme(color_scheme_seed=crypt_drive_blue, font_family="Aeonik", floating_action_button_theme=ft.FloatingActionButtonTheme(foreground_color=crypt_drive_purple))
 
 crypt_drive_fonts = {
     "Aeonik": f"Aeonik/AeonikExtendedLatinHebrew-Regular.otf",

@@ -111,11 +111,11 @@ class FilesDatabaseDAO:
         )
 
     def get_all_dirs_in_path(self, file_owner_id, path):
-        return FilesDB.select().where(
+        return list(FilesDB.select().where(
             FilesDB.file_owner_id == file_owner_id,
             FilesDB.user_file_path == path,
             FilesDB.is_directory == True
-        )
+        ))
 
     def does_dir_exist(self, file_owner_id, dir_path, dir_name):
         return FilesDB.select().where(

@@ -1,6 +1,7 @@
 import logging
 import uuid
-from typing import Any
+
+from png import undo_filter_paeth
 
 from Server.DAOs import FilesDatabaseDAO
 from Server.DAOs.FilesDiskDAO import FilesDiskDAO
@@ -78,7 +79,7 @@ class FileService:
             for file in self.files_database_dao.get_all_files_in_path(file_owner_id, user_file_path):
                 self.delete_file(file_owner, file.user_file_path, file.user_file_name)
             # delete subdirectories
-            for directory in self.files_database_dao.get_all_dirs_in_path(file_owner_id, user_file_path):
+            for directory in self.files_database_dao.get_all_dirs_in_path(file_owner_id, f"{user_file_path}/{user_file_name}"):
                 self.delete_dir(file_owner, directory.user_file_path, directory.user_file_name)
             # delete from database
             self.files_database_dao.delete_dir(file_owner_id, user_file_path, user_file_name)
@@ -108,13 +109,14 @@ class FileService:
         file_owner_id = self.users_service.get_user_id(file_owner)
         logging.debug(f"{file_owner} user id: {file_owner_id}")
         dirs_in_path = self.files_database_dao.get_all_dirs_in_path(file_owner_id, path)
+        logging.debug(f"Dirs in path: {dirs_in_path}")
 
         directories_list = []
         for directory in dirs_in_path:
-            temp_dir = Directory(f"{directory.user_file_path}/{directory.user_file_name}", directory.file_size)
+            temp_dir = Directory(f"{directory.user_file_path}/{directory.user_file_name}" if directory.user_file_path != "/" else f"/{directory.user_file_name}", directory.file_size)
             logging.debug(f"Temp dir: {temp_dir.__dict__}")
             directories_list.append(temp_dir)
-        logging.debug(f"Dirs list: {directories_list.__dict__}")
+        logging.debug(f"Dirs list: {[directory.__dict__ for directory in directories_list]}")
         return directories_list
 
     def get_files_list_in_path(self, file_owner, path):
@@ -137,9 +139,10 @@ class FileService:
         else:
             return False
 
-    def _get_parent_dir_name_and_path(self, user_file_path) -> tuple[Any | None, str | Any]:
+    def _get_parent_dir_name_and_path(self, user_file_path):
+        if user_file_path is None: return None, "/"
         parent_dir_name = user_file_path.split("/")[-1] if user_file_path.split("/")[-1] != "" else "/"
-        parent_dir_path = user_file_path[:-len(parent_dir_name)] if parent_dir_name != "/" else None
+        parent_dir_path = user_file_path[:-len(parent_dir_name)] if user_file_path[:-len(parent_dir_name)] == "/" else user_file_path[:-(len(parent_dir_name) + 1)] if parent_dir_name != "/" else None
         return parent_dir_name, parent_dir_path
 
 class Directory:
@@ -157,8 +160,8 @@ if __name__ == "__main__":
 
     user_service = UsersService()
     file_service = FileService(user_service)
-    temp_username = str(file_service._file_uuid_generator())
-    temp_filename = str(file_service._file_uuid_generator())
+    temp_username = str(uuid.uuid4())
+    temp_filename = str(uuid.uuid4())
     file_service.users_service.create_user(temp_username, "123456789")
     file_service.create_file(temp_username, "/a/b/c/d/", temp_filename, b"hello world")
     print(file_service.get_file_contents(temp_username,  "/a/b/c/d/", temp_filename))

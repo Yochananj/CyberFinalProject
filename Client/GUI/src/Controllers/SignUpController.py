@@ -21,15 +21,15 @@ class SignUpController:
         self.view.username.on_change = lambda e: self.upon_text_field_change(page)
         self.view.password.on_change = lambda e: self.upon_text_field_change(page)
         self.view.password_confirmation.on_change = lambda e: self.upon_text_field_change(page)
-        self.view.log_in_button.on_click = lambda e: self.upon_sign_up_click(page)
+        self.view.sign_up_button.on_click = lambda e: self.upon_sign_up_click(page)
         self.view.switch_to_log_in_button.on_click = lambda e: self.upon_switch_to_log_in_click(page)
 
 
     def upon_text_field_change(self, page: ft.Page):
         if self.view.username.value and self.view.password.value and self.view.password_confirmation.value:
-            self.view.log_in_button.disabled = False
+            self.view.sign_up_button.disabled = False
         else:
-            self.view.log_in_button.disabled = True
+            self.view.sign_up_button.disabled = True
         page.update()
 
 

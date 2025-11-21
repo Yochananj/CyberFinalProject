@@ -1,20 +1,23 @@
 import json
 import logging
+import os.path
 
 import flet as ft
 import platformdirs
 
 from Client.GUI.src.Views.AccountContainer import AccountContainer
-from Client.GUI.src.Views.FilesContainer import FilesContainer, FileTile, FolderTile
+from Client.GUI.src.Views.FileContainer import FileContainer
 from Client.GUI.src.Views.HomeView import HomeView
 from Client.GUI.src.Views.SettingsContainer import SettingsContainer
+from Client.GUI.src.Views.UIElements import error_alert, FolderTile, FileTile, success_alert
 from Client.GUI.src.Views.ViewsAndRoutesList import ViewsAndRoutesList
+from Client.Services.ClientFileService import ClientFileService
 from Dependencies.Constants import crypt_drive_blue, crypt_drive_theme, crypt_drive_fonts
 from Dependencies.VerbDictionary import Verbs
 
 
 class HomeController:
-    def __init__(self, page: ft.Page, view: HomeView, navigator, comms_manager, client_file_service):
+    def __init__(self, page: ft.Page, view: HomeView, navigator, comms_manager, client_file_service: ClientFileService):
         self.view = view
         self.navigator = navigator
         self.comms_manager = comms_manager
@@ -22,7 +25,7 @@ class HomeController:
         self.page.theme = crypt_drive_theme
         self.container = None
         self.current_dir = "/"
-        self.client_file_service = client_file_service
+        self.client_file_service: ClientFileService = client_file_service
 
         self.page.fonts = crypt_drive_fonts
 
@@ -30,9 +33,11 @@ class HomeController:
         self.page.vertical_alignment = ft.MainAxisAlignment.CENTER
         self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-        self.file_container = FilesContainer()
+        self.file_container = FileContainer()
         self.account_container = AccountContainer()
         self.settings_container = SettingsContainer()
+
+        self.page.overlay.append(self.file_container.file_picker)
 
         self.mini_navigator()
         self.attach_handlers()
@@ -48,13 +53,12 @@ class HomeController:
         match self.view.nav_rail.selected_index:
             case 0:  # Files container
                 self.page.title = "CryptDrive: Files"
-                self.container = self.file_container
+                self.container: FileContainer = self.file_container
 
                 self.container.column.controls = []
                 self.container.tiles.controls = []
                 self.container.column.controls.append(self.container.title)
                 self.container.column.controls.append(self.container.animator)
-
 
                 self.view.body.content = self.container.build()
                 self.page.update()
@@ -64,12 +68,15 @@ class HomeController:
 
                 self.container.animator.content = self.container.tiles
 
-                if self.current_dir == "/":
-                    self.container.current_directory = FolderTile(path=self.current_dir, item_count=None, is_current_directory=True, root=True)
-                else:
-                    self.container.current_directory = FolderTile(path=self.current_dir, item_count=None, is_current_directory=True)
+                self.container.current_directory = FolderTile(path=self.current_dir, item_count=None, is_current_directory=True,)
 
-                self.container.tiles.controls.append(self.container.current_directory.tile)
+                self.container.subtitle_row.controls = []
+                self.container.subtitle_row.controls.append(self.container.current_directory.tile)
+                self.container.subtitle_row.controls.append(self.container.upload_file_button)
+                self.container.subtitle_row.controls.append(self.container.create_dir_button)
+
+
+                self.container.tiles.controls.append(self.container.subtitle_row)
 
                 dir_list, file_list = self.get_file_list()
 
@@ -89,48 +96,58 @@ class HomeController:
                             file_size=file["size"]
                         )
                     )
+                for directory in self.container.directories:
+                    self.container.tiles.controls.append(directory.tile)
+                for file in self.container.files:
+                    self.container.tiles.controls.append(file.tile)
+                self.container.animator.content = self.container.tiles
+
 
             case 1:  # Account container
                 self.page.title = "CryptDrive: Account"
-                self.container = self.account_container
+                self.container: AccountContainer = self.account_container
 
             case 2:  # Settings container
                 self.page.title = "CryptDrive: Settings"
-                self.container = self.settings_container
+                self.container: SettingsContainer = self.settings_container
 
         self.view.body.content = self.container.build()
         self.container.title.font_family = "Aeonik Black"
         self.container.title.size = 90
         self.container.title.color = crypt_drive_blue
-        self.container.column.scroll = True
         self.container.column.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
         self.attach_handlers_per_destination()
 
-        if self.view.nav_rail.selected_index == 0:
-            self.page.views[0].floating_action_button = self.container.fab
-
-            for directory in self.container.directories:
-                self.container.tiles.controls.append(directory.tile)
-            for file in self.container.files:
-                self.container.tiles.controls.append(file.tile)
-            self.container.animator.update()
-        else:
-            self.page.views[0].floating_action_button = None
         self.page.update()
 
     def attach_handlers_per_destination(self):
         match self.view.nav_rail.selected_index:
             case 0:  # Files container
-                parent_dir = self.container.current_directory.path[:-1]
-                if parent_dir == "": parent_dir = "/"
+                self.container.animator.update()
+
+                # Current Dir FolderTile
+                parent_dir = self.container.current_directory.path[:-1] if self.container.current_directory.path[:-1] != "" else "/"
                 if self.container.current_directory.path + self.container.current_directory.name != "/":
                     self.container.current_directory.tile.on_click = lambda e: self.change_dir(parent_dir)
+
+                # `Upload File` button
+                self.container.upload_file_button.on_click = lambda e: self.upload_file_button_on_click()
+                self.container.file_picker.on_result = lambda e: self.upload_file(self.container.file_picker.result) if self.container.file_picker.result else None
+
+                # `Create Directory` button and dialog
+                self.container.create_dir_button.on_click = lambda e: self.page.open(self.container.create_dir_dialog)
+                self.container.create_dir_dialog_confirm.on_click = lambda e, dir_name_text_field=self.container.create_dir_dialog_text_field: self.create_dir_confirm_on_click(dir_name_text_field.value)
+                self.container.create_dir_dialog_cancel.on_click = lambda e: self.page.close(self.container.create_dir_dialog)
+
+                # FolderTiles
                 for directory in self.container.directories:
                     directory.tile.on_click = lambda e, dp = directory.path, dn = directory.name: self.change_dir(dp + dn)
+                    directory.delete.on_click = lambda e, d = directory: self.delete_dir_on_click(d)
 
+                # FileTile Download Buttons
                 for file in self.container.files:
-                    file.download.on_click = lambda e, fn=file.name: self.download_file(fn)
+                    file.download.on_click = lambda e, fn=file.name: self.download_file_on_click(fn)
 
 
             case 1:  # Account container
@@ -143,18 +160,84 @@ class HomeController:
         self.current_dir = path
         self.mini_navigator()
 
-    def download_file(self, file_name):
-        status, file_bytes = self.comms_manager.send_message(verb=Verbs.DOWNLOAD_FILE, data=[self.current_dir, file_name])
+    def upload_file_button_on_click(self):
+        if self.container.file_picker not in self.page.overlay:
+            self.page.overlay.append(self.container.file_picker)
+            self.page.update()
+
+        self.container.file_picker.pick_files()
+        self.page.update()
+
+    def upload_file(self, result):
+        logging.debug(f"Uploading file: {result.path}")
+        file_name = os.path.basename(result.path)
+        file_contents = self.client_file_service.read_file_from_disk(result.path)
+        status, response = self.comms_manager.send_message(Verbs.CREATE_FILE, [self.current_dir, file_name, file_contents])
+        if status == "SUCCESS":
+            logging.debug("File uploaded successfully")
+            self.mini_navigator()
+            self.page.open(success_alert(f"File {self.current_dir if self.current_dir != "/" else ""}/{file_name} uploaded successfully"))
+        else:
+            logging.debug("File upload failed")
+            self.page.open(error_alert("File Upload Failed. Please Try Again"))
+        self.container.file_picker.result = None
+
+    def create_dir_confirm_on_click(self, dir_name: str):
+        if len(dir_name) == 0:
+            self.page.open(error_alert("Directory Name Cannot Be Empty"))
+            return
+
+        if not dir_name.isalnum():
+            self.page.open(error_alert("Directory Name Cannot Contain symbols'"))
+            return
+
+        self.page.close(self.container.create_dir_dialog)
+        logging.debug(f"Current dir: {self.current_dir}")
+        logging.debug(f"Dir name: {dir_name}")
+        data = [self.current_dir, dir_name]
+        status, response = self.comms_manager.send_message(verb=Verbs.CREATE_DIR, data=data)
+        if status == "SUCCESS":
+            logging.debug("Directory created successfully")
+            self.mini_navigator()
+            self.page.open(success_alert(f"Directory {self.current_dir}/{dir_name} created successfully"))
+        else:
+            logging.debug("Directory creation failed")
+            self.mini_navigator()
+            self.page.open(error_alert("Directory name already taken. Please try again with a different name."))
+        self.container.create_dir_dialog_text_field.value = ""
+
+    def delete_dir_on_click(self, directory: FolderTile):
+        self.container.delete_file_dialog_title.value = f"Are you sure you want to delete \"{directory.name}\"?"
+        self.page.open(self.container.delete_file_dialog)
+        self.container.delete_file_dialog_confirm.on_click = lambda e, d=directory: self.delete_dir(d.path, d.name)
+        self.container.delete_file_dialog_cancel.on_click = lambda e: self.page.close(self.container.delete_file_dialog)
+
+    def delete_dir(self, dir_path, dir_name):
+        self.page.close(self.container.delete_file_dialog)
+        logging.debug(f"Deleting directory: [{dir_path}, {dir_name}]")
+        status, response = self.comms_manager.send_message(verb=Verbs.DELETE_DIR, data=[dir_path, dir_name])
+        if status == "SUCCESS":
+            logging.debug(f"Directory [{dir_path}, {dir_name}] deleted successfully")
+            self.mini_navigator()
+            self.page.open(success_alert(f"Directory {dir_path if dir_path != "/" else ""}/{dir_name} deleted successfully"))
+        else:
+            logging.debug("Directory deletion failed")
+            self.page.open(error_alert(f"Directory {dir_path}/{dir_name} Deletion Failed. Please Try Again"))
+
+    def download_file_on_click(self, file_name):
+        data = [self.current_dir if self.current_dir != "/" else "", file_name]
+        status, file_bytes = self.comms_manager.send_message(verb=Verbs.DOWNLOAD_FILE, data=data)
         if status == "SUCCESS":
             logging.debug("Download successful \n Writing to file")
             self.client_file_service.save_file_to_disk(platformdirs.user_downloads_path(), file_name, file_bytes)
             logging.debug("File saved successfully")
         else:
             logging.debug("Download failed")
+            self.page.open(error_alert("Download Failed. Please Try Again"))
 
     def get_file_list(self):
         logging.debug("Getting file list")
-        status, dirs_and_files = self.comms_manager.send_message(verb=Verbs.GET_FILES_LIST, data=[self.current_dir])
+        status, dirs_and_files = self.comms_manager.send_message(verb=Verbs.GET_ITEMS_LIST, data=[self.current_dir])
         dirs, files = [], []
 
         logging.debug(f"status: {status}")
@@ -167,8 +250,8 @@ class HomeController:
         return dirs, files
 
     def log_out(self):
-        self.navigator(ViewsAndRoutesList.LOG_IN)
         self.comms_manager.token = 'no_token'
+        self.navigator(ViewsAndRoutesList.LOG_IN)
 
 
 

@@ -1,6 +1,9 @@
 import os
 import flet as ft
 
+from Client.GUI.src.Views.UIElements import error_alert
+from Dependencies.Constants import crypt_drive_purple
+
 
 class SignUpView:
     def __init__(self, username_start_value: str = "", password_start_value: str = ""):
@@ -14,66 +17,23 @@ class SignUpView:
                     fit=ft.ImageFit.FIT_WIDTH
                 )]
         )
-        self.username = ft.TextField(value=username_start_value, label="Username", width=300, autofocus=True, prefix_icon=ft.Icons.PERSON_ROUNDED)
-        self.password = ft.TextField(value=password_start_value, label="Password", text_vertical_align=ft.VerticalAlignment.START, width=300, password=True, prefix_icon=ft.Icons.KEY_ROUNDED, can_reveal_password=True)
-        self.password_confirmation = ft.TextField(label="Confirm Password", text_vertical_align=ft.VerticalAlignment.START, width=300, password=True, prefix_icon=ft.Icons.KEY_ROUNDED, can_reveal_password=True)
-        self.log_in_button = ft.ElevatedButton(text="Sign Up", width=300, disabled=True)
+        self.username = ft.TextField(value=username_start_value, label="Username", width=300, autofocus=True, prefix_icon=ft.Icon(ft.Icons.PERSON_ROUNDED, color=crypt_drive_purple))
+
+        self.password = ft.TextField(value=password_start_value, label="Password", text_vertical_align=ft.VerticalAlignment.START, width=300, password=True, prefix_icon=ft.Icon(ft.Icons.KEY_ROUNDED, color=crypt_drive_purple), can_reveal_password=True)
+
+        self.password_confirmation = ft.TextField(label="Confirm Password", text_vertical_align=ft.VerticalAlignment.START, width=300, password=True, prefix_icon=ft.Icon(ft.Icons.KEY_ROUNDED, color=crypt_drive_purple), can_reveal_password=True)
+
+        self.sign_up_button = ft.ElevatedButton(text="Sign Up", width=300, disabled=True)
+
         self.switch_to_log_in_button = ft.ElevatedButton(text="Log In Instead", width=300, disabled=False)
-        self.taken_username_snack_bar = ft.SnackBar(
-            duration=5000,
-            content=ft.Row(
-                controls=[ft.Icon(ft.Icons.CLOSE_ROUNDED, color=ft.Colors.RED),
-                          ft.Text("Sign Up Failed: Username is already taken.", color=ft.Colors.RED)],
-                alignment=ft.MainAxisAlignment.START,
-                spacing=10,
-            ),
-            behavior=ft.SnackBarBehavior.FLOATING,
-            bgcolor=ft.Colors.RED_100,
-            shape=ft.ContinuousRectangleBorder(radius=10),
-            margin=ft.margin.all(10)
-        )
 
-        self.passwords_must_match_snack_bar = ft.SnackBar(
-            duration=5000,
-            content=ft.Row(
-                controls=[ft.Icon(ft.Icons.CLOSE_ROUNDED, color=ft.Colors.RED),
-                          ft.Text("Password and Password Confirmation must be identical.", color=ft.Colors.RED)],
-                alignment=ft.MainAxisAlignment.START,
-                spacing=10,
-            ),
-            behavior=ft.SnackBarBehavior.FLOATING,
-            bgcolor=ft.Colors.RED_100,
-            shape=ft.ContinuousRectangleBorder(radius=10),
-            margin=ft.margin.all(10)
-        )
+        self.taken_username_snack_bar = error_alert("Sign Up Failed: Username is already taken.")
 
-        self.username_length_snack_bar = ft.SnackBar(
-            duration=5000,
-            content=ft.Row(
-                controls=[ft.Icon(ft.Icons.CLOSE_ROUNDED, color=ft.Colors.RED),
-                          ft.Text("Username must be between 3 and 32 characters long.", color=ft.Colors.RED)],
-                alignment=ft.MainAxisAlignment.START,
-                spacing=10,
-            ),
-            behavior=ft.SnackBarBehavior.FLOATING,
-            bgcolor=ft.Colors.RED_100,
-            shape=ft.ContinuousRectangleBorder(radius=10),
-            margin=ft.margin.all(10)
-        )
+        self.passwords_must_match_snack_bar = error_alert("Password and Password Confirmation must be identical.")
 
-        self.password_length_snack_bar = ft.SnackBar(
-            duration=5000,
-            content=ft.Row(
-                controls=[ft.Icon(ft.Icons.CLOSE_ROUNDED, color=ft.Colors.RED),
-                          ft.Text("Password must be between 8 and 64 characters long.", color=ft.Colors.RED)],
-                alignment=ft.MainAxisAlignment.START,
-                spacing=10,
-            ),
-            behavior=ft.SnackBarBehavior.FLOATING,
-            bgcolor=ft.Colors.RED_100,
-            shape=ft.ContinuousRectangleBorder(radius=10),
-            margin=ft.margin.all(10)
-        )
+        self.username_length_snack_bar = error_alert("Username must be between 3 and 32 characters long.")
+
+        self.password_length_snack_bar = error_alert("Password must be between 8 and 64 characters long.")
 
 
     def build(self):
@@ -86,7 +46,7 @@ class SignUpView:
                         self.username,
                         self.password,
                         self.password_confirmation,
-                        self.log_in_button,
+                        self.sign_up_button,
                         self.switch_to_log_in_button]
                     )],
                 alignment=ft.MainAxisAlignment.CENTER)],

@@ -13,6 +13,7 @@ class UsersService:
             logging.debug("User does not exist. Creating...")
             self.dao.create_user(username, password_hash)
             logging.debug(f"User {username} created.")
+
             return True
         else:
             logging.debug(f"User {username} already exists.")
